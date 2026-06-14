@@ -1,0 +1,1306 @@
+
+<script id="ec-csrf-fetch-patch">
+(function(){
+  if (window.ecFetchPatched) return;
+  window.ecFetchPatched = true;
+  var origFetch = window.fetch;
+  function getCsrf() {
+    return (window.frappe && window.frappe.csrf_token) ||
+           (window.CTX && window.CTX.csrfToken) ||
+           window.csrf_token ||
+           (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] ||
+           'token';
+  }
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    var u = (typeof url === 'string') ? url : (url && url.url) || '';
+    var method = (opts.method || 'GET').toUpperCase();
+    var isApi = u.indexOf('/api/method/') >= 0 || u.indexOf('/api/resource/') >= 0;
+    if (isApi && method !== 'GET' && method !== 'HEAD') {
+      opts.headers = opts.headers || {};
+      if (opts.headers.set && typeof opts.headers.set === 'function') {
+        if (!opts.headers.get('X-Frappe-CSRF-Token')) {
+          opts.headers.set('X-Frappe-CSRF-Token', getCsrf());
+        }
+      } else {
+        var hasToken = false;
+        for (var k in opts.headers) {
+          if (k.toLowerCase() === 'x-frappe-csrf-token') { hasToken = true; break; }
+        }
+        if (!hasToken) {
+          opts.headers['X-Frappe-CSRF-Token'] = getCsrf();
+        }
+      }
+      if (opts.credentials === undefined) opts.credentials = 'include';
+    }
+    return origFetch.call(window, url, opts);
+  };
+  console.log('[ec-csrf] fetch wrapper installed');
+})();
+</script>
+
+<!-- CP_REDIRECT_GUARD_START -->
+<script>
+(function(){
+    "use strict";
+    console.log("[home-guard] running");
+    fetch("/api/method/sso_get_profile", {
+        method: "GET",
+        credentials: "include",
+        headers: {"Accept": "application/json"}
+    })
+    .then(function(r) {
+        console.log("[home-guard] response status", r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        var msg = (data && data.message) || {};
+        console.log("[home-guard] sso_get_profile result", msg);
+        if (msg.logged_in === false) {
+            console.log("[home-guard] not logged in, stay on /home");
+            return;
+        }
+        if (msg.is_complete) {
+            console.log("[home-guard] profile complete, stay on /home");
+            return;
+        }
+        // Logged in + profile NOT complete -> redirect
+        console.log("[home-guard] redirecting to /complete-profile (logged_in=" + msg.logged_in + ", is_complete=" + msg.is_complete + ")");
+        window.location.replace("/complete-profile");
+    })
+    .catch(function(err) {
+        console.error("[home-guard] fetch error", err);
+    });
+})();
+</script>
+<!-- CP_REDIRECT_GUARD_END -->
+
+<!-- ACTIVE-MENU-JS -->
+<script>
+(function() {
+  function setActive() {
+    var path = window.location.pathname.replace(/\/+$/, '') || '/';
+    var links = document.querySelectorAll('.ec-sb-link');
+    links.forEach(function(a) {
+      var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
+      a.classList.remove('active');
+      // Strict exact match
+      if (href === path) {
+        a.classList.add('active');
+      }
+      // Special case: '/home' page should also activate links with href='/'
+      else if ((path === '/home' || path === '/') && (href === '/' || href === '/home')) {
+        a.classList.add('active');
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setActive);
+  } else {
+    setActive();
+  }
+})();
+</script>
+
+<!-- HIDE-NAVBAR-V1 -->
+<style>
+  /* Hide Frappe default navbar + footer to give full-screen workspace */
+  body > header,
+  body > footer,
+  body > nav.navbar,
+  header.navbar,
+  .navbar.navbar-light,
+  .web-page-header,
+  #navbarSupportedContent,
+  .navbar-collapse {
+    display: none !important;
+  }
+  body { padding: 0 !important; margin: 0 !important; }
+  body main { padding-top: 0 !important; }
+  body .main-section, body main.container, body main.fluid {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  /* If Frappe wraps page content in a container, expand it */
+  body .page_content { padding: 0 !important; }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{# ==============================================================
+   eCentric Workspace - Web Page Main Section
+   PASTE TOÀN BỘ NỘI DUNG NÀY VÀO TRƯỜNG "Main Section" CỦA WEB PAGE
+   Yêu cầu: tick "Dynamic Template" = ✅
+   ============================================================== #}
+
+{% set user_email = frappe.session.user %}
+{% if user_email == 'Guest' %}
+  <script>window.location.href = '/login?redirect-to=/';</script>
+{% endif %}
+
+{# ====== LẤY DATA CÁ NHÂN HÓA ====== #}
+{% set user_doc = frappe.db.get_value('User', user_email, ['name', 'full_name', 'user_image', 'email', 'first_name', 'last_name'], as_dict=True) if user_email != 'Guest' else None %}
+{% set full_name = (user_doc.full_name if user_doc and user_doc.full_name else user_email.split('@')[0]) %}
+{% set name_parts = full_name.split() %}
+{% set first_name = name_parts[0] if name_parts else 'Bạn' %}
+{% set initials = (name_parts[0][0] + (name_parts[-1][0] if name_parts|length > 1 else '')).upper() if name_parts else 'U' %}
+{% set is_system_user = (frappe.session.user != 'Guest') and (frappe.db.get_value('User', frappe.session.user, 'user_type') == 'System User') %}
+
+{# ====== LẤY DATA TỪ DOCTYPES (graceful fallback nếu chưa tạo) ====== #}
+{% set has_news = frappe.db.exists('DocType', 'News Post') %}
+{% set has_policy = frappe.db.exists('DocType', 'Company Policy') %}
+
+{% set news_list = frappe.get_all('News Post',
+    filters={'published': 1},
+    fields=['name', 'title', 'category', 'image', 'published_on'],
+    order_by='published_on desc',
+    limit=3) if has_news else [] %}
+
+{% set policies = frappe.get_all('Company Policy',
+    filters={'is_active': 1},
+    fields=['name', 'title', 'category'],
+    order_by='effective_date desc',
+    limit=5) if has_policy else [] %}
+
+{# Chỉ count nếu user là System User (admin) — non-admin sẽ thấy 0, tránh permission error #}
+{% set leave_count = frappe.db.count('Leave Application', filters={'status': 'Open', 'docstatus': 0}) if is_system_user and frappe.db.exists('DocType', 'Leave Application') else 0 %}
+{% set so_count = frappe.db.count('Sales Order', filters={'docstatus': 0}) if is_system_user and frappe.db.exists('DocType', 'Sales Order') else 0 %}
+{% set approvals_count = leave_count + so_count %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --navy: #2C3DA6;
+    --navy-50: #eef0fb;
+    --navy-100: #d9deef;
+    --navy-700: #1f2d80;
+    --yellow: #FFC000;
+    --yellow-50: #fff8e1;
+    --pink: #EF7CAF;
+    --pink-50: #fdeef5;
+    --green: #10b981;
+    --gray-50: #fafbfc;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --bg: #f7f8fb;
+  }
+
+  /* Reset Frappe defaults thoroughly */
+  body { background: var(--bg) !important; padding: 0 !important; margin: 0 !important; }
+  body header.navbar, .web-footer, footer.web-footer { display: none !important; }
+  .page-content, .common-page-style, .container, main, .web-page-content, .page_content {
+    padding: 0 !important; margin: 0 !important; max-width: none !important;
+  }
+
+  .ecentric-app, .ecentric-app * { box-sizing: border-box; }
+  .ecentric-app {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--gray-800);
+    font-size: 14px;
+    line-height: 1.5;
+    display: grid;
+    grid-template-columns: 248px 1fr;
+    min-height: 100vh;
+  }
+  .ecentric-app .icon { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .ecentric-app .icon-sm { width: 16px; height: 16px; }
+  .ecentric-app .icon-xs { width: 14px; height: 14px; }
+
+  .ec-sidebar { background: white; border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .ec-sidebar .sidebar-header { padding: 16px 16px 10px; display: flex; align-items: center; justify-content: flex-start; }
+  .ec-sidebar .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .ec-sidebar .brand img { width: 40px; height: 40px; object-fit: contain; display: block; }
+  .ec-sidebar .brand-name { font-size: 15px; font-weight: 700; color: var(--gray-900); letter-spacing: -0.3px; line-height: 1.2; }
+  .ec-sidebar .sidebar-search { margin: 6px 16px 12px; position: relative; }
+  .ec-sidebar .sidebar-search input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: var(--gray-50); font-family: inherit; }
+  .ec-sidebar .sidebar-search input:focus { outline: none; border-color: var(--navy); background: white; }
+  .ec-sidebar .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--gray-400); }
+  .ec-sidebar .kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--gray-400); background: white; border: 1px solid var(--gray-200); padding: 1px 5px; border-radius: 4px; }
+  .ec-sidebar .nav-section { padding: 4px 8px 10px; flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  .ec-sidebar .nav-section:hover { scrollbar-color: var(--gray-300) transparent; }
+  .ec-sidebar .nav-section::-webkit-scrollbar { width: 6px; }
+  .ec-sidebar .nav-section::-webkit-scrollbar-track { background: transparent; }
+  .ec-sidebar .nav-section::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; transition: background 0.2s; }
+  .ec-sidebar .nav-section:hover::-webkit-scrollbar-thumb { background: var(--gray-300); }
+  .ec-sidebar .nav-section::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+  .ec-sidebar .nav-label { font-size: 10.5px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.6px; padding: 8px 12px 2px; }
+  /* === Sidebar nav-item — dùng CSS Grid (cứng, chống Frappe/Bootstrap đè) === */
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item {
+    display: grid !important;
+    grid-template-columns: 16px 1fr auto !important;
+    column-gap: 10px !important;
+    align-items: center !important;
+    justify-items: start !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    color: var(--gray-600) !important;
+    text-decoration: none !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    transition: background 0.15s, color 0.15s !important;
+    margin-bottom: 1px !important;
+    text-align: left !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    line-height: 1.3 !important;
+  }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item > svg.icon {
+    width: 16px !important; height: 16px !important;
+    grid-column: 1 !important;
+    margin: 0 !important;
+  }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item > span:not(.badge) {
+    grid-column: 2 !important;
+    margin: 0 !important;
+    text-align: left !important;
+    justify-self: start !important;
+  }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item > span.badge {
+    grid-column: 3 !important;
+    margin: 0 !important;
+    background: var(--gray-200);
+    color: var(--gray-700);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item:hover { background: var(--gray-100) !important; color: var(--gray-900) !important; text-decoration: none !important; }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item.active { background: var(--navy-50) !important; color: var(--navy) !important; font-weight: 600 !important; }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item.active svg.icon { stroke-width: 2 !important; }
+  .ecentric-app .ec-sidebar nav.nav-section a.nav-item.active span.badge { background: var(--navy) !important; color: white !important; }
+  .ec-sidebar .nav-item.active .badge { background: var(--navy); color: white; }
+  .ec-sidebar .badge.b-soon { background: var(--gray-200) !important; color: var(--gray-600) !important; font-size: 10px !important; padding: 2px 6px !important; border-radius: 4px !important; font-weight: 600 !important; letter-spacing: 0.2px !important; }
+  .ec-sidebar .sidebar-footer { padding: 12px; border-top: 1px solid var(--gray-100); display: flex; align-items: center; gap: 8px; }
+  .ec-sidebar .user-card { flex: 1; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background 0.15s; text-decoration: none; color: inherit; min-width: 0; }
+  .ec-sidebar .logout-btn { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: transparent; border: none; color: var(--gray-500); cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .ec-sidebar .logout-btn:hover { background: #fee2e2; color: #dc2626; }
+  .ec-sidebar .logout-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .ec-sidebar .user-card:hover { background: var(--gray-100); text-decoration: none; }
+  .ec-sidebar .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--navy), var(--pink)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .ec-sidebar .user-info { flex: 1; min-width: 0; }
+  .ec-sidebar .user-name { font-size: 13px; font-weight: 600; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ec-sidebar .user-role { font-size: 11px; color: var(--gray-500); }
+
+  .ec-main { min-width: 0; display: flex; flex-direction: column; }
+  .ec-main .topbar { background: white; border-bottom: 1px solid var(--gray-200); padding: 12px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .ec-main .breadcrumb { font-size: 13px; color: var(--gray-500); padding: 0; margin: 0; background: none; }
+  .ec-main .breadcrumb strong { color: var(--gray-900); font-weight: 600; }
+  .ec-main .topbar-actions { display: flex; align-items: center; gap: 6px; }
+  .ec-main .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; color: var(--gray-500); position: relative; transition: all 0.15s; text-decoration: none; }
+  .ec-main .icon-btn:hover { background: var(--gray-100); color: var(--gray-900); }
+  .ec-main .icon-btn .dot { position: absolute; top: 8px; right: 9px; width: 6px; height: 6px; background: var(--pink); border-radius: 50%; border: 2px solid white; }
+  .ec-main .content { padding: 28px 32px 40px; max-width: 1400px; width: 100%; }
+
+  .ecentric-app .greeting { margin-bottom: 24px; }
+  .ecentric-app .greeting h1 { font-size: 26px; font-weight: 700; color: var(--gray-900); letter-spacing: -0.5px; margin-bottom: 4px; margin-top: 0; }
+  .ecentric-app .greeting p { color: var(--gray-500); font-size: 14px; margin: 0; }
+
+  .ecentric-app .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .ecentric-app .stat-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 18px 20px; transition: all 0.15s; position: relative; overflow: hidden; }
+  .ecentric-app .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+  .ecentric-app .stat-card.s-navy::before { background: var(--navy); }
+  .ecentric-app .stat-card.s-yellow::before { background: var(--yellow); }
+  .ecentric-app .stat-card.s-pink::before { background: var(--pink); }
+  .ecentric-app .stat-card.s-green::before { background: var(--green); }
+  .ecentric-app .stat-card:hover { border-color: var(--gray-300); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .ecentric-app .stat-label { font-size: 12px; font-weight: 500; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .ecentric-app .stat-value { font-size: 26px; font-weight: 700; color: var(--gray-900); line-height: 1.1; letter-spacing: -0.5px; }
+  .ecentric-app .stat-value .unit { font-size: 14px; color: var(--gray-500); font-weight: 500; margin-left: 2px; }
+  .ecentric-app .stat-meta { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
+  .ecentric-app .stat-meta .up { color: var(--green); font-weight: 600; }
+
+  .ecentric-app .bento { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 22px; }
+  .ecentric-app .col-left, .ecentric-app .col-right { display: flex; flex-direction: column; gap: 18px; }
+  .ecentric-app .panel { background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
+  .ecentric-app .panel-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gray-100); }
+  .ecentric-app .panel-title { font-size: 14px; font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+  .ecentric-app .panel-title .badge { background: var(--navy-50); color: var(--navy); font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; }
+  .ecentric-app .panel-title .badge.b-pink { background: var(--pink); color: white; }
+  .ecentric-app .panel-action { font-size: 12.5px; color: var(--navy); text-decoration: none; font-weight: 500; }
+
+  .ecentric-app .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px; }
+  .ecentric-app .quick-item { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 8px; border-radius: 10px; text-decoration: none; color: var(--gray-700); transition: all 0.15s; border: 1px solid transparent; }
+  .ecentric-app .quick-item:hover { background: var(--gray-50); border-color: var(--gray-200); color: var(--navy); text-decoration: none; }
+  .ecentric-app .quick-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--gray-50); color: var(--navy); display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .ecentric-app .quick-item:hover .quick-icon { background: var(--navy-50); }
+  .ecentric-app .quick-label { font-size: 12.5px; font-weight: 500; text-align: center; line-height: 1.3; }
+
+  .ecentric-app .checkin-card { background: linear-gradient(135deg, var(--navy) 0%, #3d52cc 100%); color: white; border-radius: 12px; padding: 22px; position: relative; overflow: hidden; }
+  .ecentric-app .checkin-card::after { content: ''; position: absolute; bottom: -50px; right: -50px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(255,192,0,0.18) 0%, transparent 65%); border-radius: 50%; }
+  .ecentric-app .checkin-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85; font-weight: 600; position: relative; }
+  .ecentric-app .checkin-time { font-size: 36px; font-weight: 700; letter-spacing: -1px; margin: 4px 0 2px; font-variant-numeric: tabular-nums; position: relative; }
+  .ecentric-app .checkin-date { font-size: 13px; opacity: 0.85; position: relative; }
+  .ecentric-app .checkin-status { background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 12px; margin: 16px 0 14px; display: flex; align-items: center; gap: 8px; font-size: 13px; position: relative; }
+  .ecentric-app .status-dot-w { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); box-shadow: 0 0 0 3px rgba(255,192,0,0.3); }
+  .ecentric-app .btn-checkin { width: 100%; background: var(--yellow); color: var(--gray-900); border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; font-family: inherit; }
+  .ecentric-app .btn-checkin:hover { background: #e6ac00; }
+
+  .ecentric-app .approval-list { padding: 6px 8px 8px; }
+  .ecentric-app .approval-item { padding: 12px; border-radius: 8px; transition: background 0.15s; display: flex; gap: 12px; align-items: center; position: relative; }
+  .ecentric-app .approval-item::before { content: ''; width: 3px; align-self: stretch; border-radius: 2px; background: var(--yellow); flex-shrink: 0; }
+  .ecentric-app .approval-item.type-leave::before { background: var(--pink); }
+  .ecentric-app .approval-item:hover { background: var(--gray-50); }
+  .ecentric-app .approval-content { flex: 1; min-width: 0; }
+  .ecentric-app .approval-title { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ecentric-app .approval-meta { font-size: 11.5px; color: var(--gray-500); }
+  .ecentric-app .approval-type { font-size: 10px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+
+  .ecentric-app .news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px; }
+  .ecentric-app .news-card { background: white; border: 1px solid var(--gray-200); border-radius: 10px; overflow: hidden; transition: all 0.15s; text-decoration: none; color: inherit; display: block; }
+  .ecentric-app .news-card:hover { border-color: var(--gray-300); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); text-decoration: none; }
+  .ecentric-app .news-image { height: 120px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; text-align: center; padding: 16px; letter-spacing: 0.3px; background-size: cover; background-position: center; }
+  .ecentric-app .news-image.gradient-1 { background: linear-gradient(135deg, var(--navy), #3d52cc); }
+  .ecentric-app .news-image.gradient-2 { background: linear-gradient(135deg, var(--yellow), var(--pink)); }
+  .ecentric-app .news-image.gradient-3 { background: linear-gradient(135deg, var(--gray-800), var(--navy)); }
+  .ecentric-app .news-body { padding: 12px 14px 14px; }
+  .ecentric-app .news-tag { display: inline-block; background: var(--yellow-50); color: #b88600; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .ecentric-app .news-tag.t-pink { background: var(--pink-50); color: #c2185b; }
+  .ecentric-app .news-tag.t-navy { background: var(--navy-50); color: var(--navy); }
+  .ecentric-app .news-title { font-size: 13.5px; font-weight: 600; color: var(--gray-900); line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ecentric-app .news-date { font-size: 11.5px; color: var(--gray-500); }
+
+  .ecentric-app .policy-list { padding: 4px 8px 8px; }
+  .ecentric-app .policy-item { padding: 11px 12px; border-radius: 8px; display: flex; align-items: center; gap: 12px; transition: background 0.15s; text-decoration: none; color: inherit; }
+  .ecentric-app .policy-item:hover { background: var(--gray-50); text-decoration: none; }
+  .ecentric-app .policy-bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--yellow); flex-shrink: 0; }
+  .ecentric-app .policy-text { font-size: 12.5px; color: var(--gray-700); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ecentric-app .policy-arrow { color: var(--gray-300); }
+
+  @media (max-width: 1100px) {
+    .ecentric-app { grid-template-columns: 64px 1fr; }
+    .ec-sidebar .sidebar-search, .ec-sidebar .nav-label, .ec-sidebar .nav-item span:not(.badge), .ec-sidebar .brand-name, .ec-sidebar .user-info { display: none; }
+    .ec-sidebar .nav-item, .ec-sidebar .brand, .ec-sidebar .user-card { justify-content: center; padding: 8px; }
+    .ecentric-app .stats-strip { grid-template-columns: repeat(2, 1fr); }
+    .ecentric-app .bento { grid-template-columns: 1fr; }
+    .ecentric-app .news-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .ecentric-app .stats-strip { grid-template-columns: 1fr 1fr; }
+    .ecentric-app .quick-grid { grid-template-columns: repeat(3, 1fr); }
+    .ecentric-app .news-grid { grid-template-columns: 1fr; }
+    .ec-main .content { padding: 20px 16px; }
+    .ec-main .topbar { padding: 12px 16px; }
+  }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-grad" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
+    <symbol id="i-mega" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3v1h6v-1c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  </defs>
+</svg>
+
+<div class="ecentric-app">
+  <aside class="ec-sidebar">
+    <div class="sidebar-header">
+      <a href="/" class="brand">
+        <img src="/files/eCentric%20logo%20-%20mini.png" alt="eCentric">
+        <span class="brand-name">eCentric<br>Workspace</span>
+      </a>
+    </div>
+
+    <div class="sidebar-search">
+      <svg class="icon icon-sm search-icon"><use href="#i-search"/></svg>
+      <input type="text" placeholder="Tìm kiếm..." id="global-search">
+      <span class="kbd">⌘K</span>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <a href="/" class="nav-item active"><svg class="icon"><use href="#i-home"/></svg><span>Trang chủ</span></a>
+      <a href="/coming-soon?tool=tong-quan" class="nav-item"><svg class="icon"><use href="#i-grid"/></svg><span>Tổng quan</span></a>
+      <a href="/all-ticket" class="nav-item"><svg class="icon"><use href="#i-check"/></svg><span>Phê duyệt</span>{% if approvals_count %}<span class="badge">{{ approvals_count }}</span>{% endif %}</a>
+      <a href="/coming-soon?tool=cong-viec" class="nav-item"><svg class="icon"><use href="#i-list"/></svg><span>Công việc</span></a>
+      <a href="/hall" class="nav-item"><svg class="icon"><use href="#i-mega"/></svg><span>eCentric Hall</span></a>
+
+      <div class="nav-label" style="margin-top:10px;">Nhân sự</div>
+      <a href="/coming-soon?tool=cham-cong" class="nav-item"><svg class="icon"><use href="#i-clock"/></svg><span>Chấm công</span></a>
+      <a href="/coming-soon?tool=nghi-phep" class="nav-item"><svg class="icon"><use href="#i-calendar"/></svg><span>Nghỉ phép</span></a>
+      <a href="/coming-soon?tool=phieu-luong" class="nav-item"><svg class="icon"><use href="#i-wallet"/></svg><span>Phiếu lương</span></a>
+      <a href="/coming-soon?tool=kpi" class="nav-item"><svg class="icon"><use href="#i-target"/></svg><span>Mục tiêu KPI</span></a>
+
+      <div class="nav-label" style="margin-top:10px;">Báo cáo & Phân tích</div>
+      <a href="/weekly-update" class="nav-item"><svg class="icon"><use href="#i-doc"/></svg><span>Báo cáo tuần</span></a>
+      <a href="/team-pulse" class="nav-item"><svg class="icon"><use href="#i-sparkles"/></svg><span>Team Pulse</span></a>
+
+      <div class="nav-label" style="margin-top:10px;">Tài nguyên</div>
+      <a href="/coming-soon?tool=intranet" class="nav-item"><svg class="icon"><use href="#i-book"/></svg><span>Intranet</span></a>
+      <a href="/coming-soon?tool=dao-tao" class="nav-item"><svg class="icon"><use href="#i-grad"/></svg><span>Đào tạo</span></a>
+      <a href="/coming-soon?tool=tuyen-dung" class="nav-item"><svg class="icon"><use href="#i-mega"/></svg><span>Tuyển dụng</span></a>
+      <a href="/coming-soon?tool=gop-y" class="nav-item"><svg class="icon"><use href="#i-bulb"/></svg><span>Góp ý BGD</span></a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/app/user/{{ user_email }}" class="user-card">
+        <div class="avatar">{{ initials }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ full_name }}</div>
+          <div class="user-role">Nhân viên</div>
+        </div>
+      </a>
+      <a href="/login-page" onclick="event.preventDefault(); fetch('/api/method/logout', {credentials: 'same-origin'}).finally(function() { window.location.href = '/login-page'; }); return false;" class="logout-btn" title="Đăng xuất" aria-label="Đăng xuất">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <div class="ec-main">
+    <div class="topbar">
+      <div class="breadcrumb">Workspace / <strong>Trang chủ</strong></div>
+      <div class="topbar-actions">
+        <a href="/help" class="icon-btn"><svg class="icon icon-sm"><use href="#i-help"/></svg></a>
+        <a href="/app/notification-log" class="icon-btn"><svg class="icon icon-sm"><use href="#i-bell"/></svg><span class="dot"></span></a>
+        <a href="/app/user-settings" class="icon-btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg></a>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="greeting">
+        <h1 id="greeting">Chào, {{ first_name }} 👋</h1>
+        <p id="today-text">Chúc bạn một ngày làm việc hiệu quả!</p>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-card s-navy">
+          <div class="stat-label">Giờ làm tháng này</div>
+          <div class="stat-value">0<span class="unit">h</span></div>
+          <div class="stat-meta">Cần cài Frappe HR</div>
+        </div>
+        <div class="stat-card s-yellow">
+          <div class="stat-label">Phép còn lại</div>
+          <div class="stat-value">0<span class="unit">ngày</span></div>
+          <div class="stat-meta">Chưa có dữ liệu</div>
+        </div>
+        <div class="stat-card s-pink">
+          <div class="stat-label">Phê duyệt chờ</div>
+          <div class="stat-value">{{ approvals_count }}</div>
+          <div class="stat-meta">{{ so_count }} SO · {{ leave_count }} đơn nghỉ phép</div>
+        </div>
+        <div class="stat-card s-green">
+          <div class="stat-label">KPI Quý này</div>
+          <div class="stat-value">0<span class="unit">%</span></div>
+          <div class="stat-meta">Chưa có dữ liệu</div>
+        </div>
+      </div>
+
+      <div class="bento">
+        <div class="col-left">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Truy cập nhanh</div>
+              <a class="panel-action" href="/app/user-settings">Tùy chỉnh</a>
+            </div>
+            <div class="quick-grid">
+              <a href="/weekly-update" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-doc"/></svg></div><span class="quick-label">Báo cáo tuần</span></a>
+              <a href="/coming-soon?tool=tong-quan" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-grid"/></svg></div><span class="quick-label">Tổng quan</span></a>
+              <a href="/coming-soon?tool=phieu-luong" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-wallet"/></svg></div><span class="quick-label">Phiếu lương</span></a>
+              <a href="/coming-soon?tool=nghi-phep" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-calendar"/></svg></div><span class="quick-label">Xin nghỉ phép</span></a>
+              <a href="/coming-soon?tool=lms" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-grad"/></svg></div><span class="quick-label">Học tập LMS</span></a>
+              <a href="/coming-soon?tool=intranet" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-book"/></svg></div><span class="quick-label">Intranet</span></a>
+              <a href="/coming-soon?tool=kpi" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-target"/></svg></div><span class="quick-label">Mục tiêu KPI</span></a>
+              <a href="/coming-soon?tool=gop-y" class="quick-item"><div class="quick-icon"><svg class="icon"><use href="#i-bulb"/></svg></div><span class="quick-label">Góp ý BGD</span></a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Tin nội bộ <span class="badge">Mới</span></div>
+              <a class="panel-action" href="/app/news-post">Xem tất cả</a>
+            </div>
+            <div class="news-grid">
+              {% if news_list %}
+                {% for n in news_list %}
+                <a href="/app/news-post/{{ n.name }}" class="news-card">
+                  {% if n.image %}
+                  <div class="news-image" style="background-image:url('{{ n.image }}');"></div>
+                  {% else %}
+                  <div class="news-image gradient-{{ loop.index }}">{{ n.title[:40] }}</div>
+                  {% endif %}
+                  <div class="news-body">
+                    <span class="news-tag {% if n.category == 'SỰ KIỆN' %}t-pink{% elif n.category == 'TIN TỨC' %}t-navy{% endif %}">{{ n.category or 'TIN' }}</span>
+                    <div class="news-title">{{ n.title }}</div>
+                    <div class="news-date">{{ n.published_on.strftime('%d/%m/%Y') if n.published_on else '' }}</div>
+                  </div>
+                </a>
+                {% endfor %}
+              {% else %}
+                <div style="grid-column: 1/-1; padding: 30px; text-align:center; color:#6b7280; font-size:13px;">
+                  Chưa có tin nào. <a href="/app/news-post/new" style="color:#2C3DA6;">Đăng tin đầu tiên</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-right">
+          <div class="checkin-card">
+            <div class="checkin-label">Chấm công hôm nay</div>
+            <div class="checkin-time" id="clock">00:00:00</div>
+            <div class="checkin-date" id="ck-date"></div>
+            <div class="checkin-status">
+              <span class="status-dot-w"></span>
+              <span>Chưa Check-in hôm nay</span>
+            </div>
+            <button class="btn-checkin" onclick="ecentricCheckin()">Check-in ngay</button>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Chờ phê duyệt {% if approvals_count %}<span class="badge b-pink">{{ approvals_count }}</span>{% endif %}</div>
+              <a class="panel-action" href="/app/todo">Tất cả</a>
+            </div>
+            <div class="approval-list">
+              {% if approvals_count == 0 %}
+                <div style="padding:24px;text-align:center;color:#6b7280;font-size:13px;">Không có yêu cầu nào đang chờ duyệt</div>
+              {% else %}
+                {% if so_count %}
+                <a href="/app/sales-order?docstatus=0" class="approval-item" style="text-decoration:none;color:inherit;">
+                  <div class="approval-content">
+                    <div class="approval-type">Sales Order</div>
+                    <div class="approval-title">{{ so_count }} đơn hàng đang chờ duyệt</div>
+                    <div class="approval-meta">Click để xem chi tiết</div>
+                  </div>
+                </a>
+                {% endif %}
+                {% if leave_count %}
+                <a href="/app/leave-application?status=Open" class="approval-item type-leave" style="text-decoration:none;color:inherit;">
+                  <div class="approval-content">
+                    <div class="approval-type">Đơn nghỉ phép</div>
+                    <div class="approval-title">{{ leave_count }} đơn đang chờ duyệt</div>
+                    <div class="approval-meta">Click để xem chi tiết</div>
+                  </div>
+                </a>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Lịch hôm nay</div>
+              <a class="panel-action" href="/app/event">Xem lịch</a>
+            </div>
+            <div style="padding:24px;text-align:center;color:#6b7280;font-size:13px;">
+              Sẽ tích hợp Outlook sau
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Chính sách & Quy định</div>
+              <a class="panel-action" href="/app/company-policy">Xem tất cả</a>
+            </div>
+            <div class="policy-list">
+              {% if policies %}
+                {% for p in policies %}
+                <a href="/app/company-policy/{{ p.name }}" class="policy-item">
+                  <div class="policy-bullet" {% if p.category == 'pink' %}style="background:#EF7CAF;"{% elif p.category == 'navy' %}style="background:#2C3DA6;"{% endif %}></div>
+                  <div class="policy-text">{{ p.title }}</div>
+                  <svg class="icon icon-xs policy-arrow"><use href="#i-arrow-right"/></svg>
+                </a>
+                {% endfor %}
+              {% else %}
+                <div style="padding:24px;text-align:center;color:#6b7280;font-size:13px;">
+                  Chưa có chính sách. <a href="/app/company-policy/new" style="color:#2C3DA6;">Thêm chính sách</a>
+                </div>
+
+<style id="ec-chatbot-style">
+.ec-chat-fab{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  width:56px;
+  height:56px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#2C3DA6 0%,#EF7CAF 100%);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  border:none;
+  box-shadow:0 6px 20px rgba(44,61,166,0.35);
+  z-index:9999;
+  transition:transform 0.15s;
+}
+.ec-chat-fab:hover{transform:scale(1.05)}
+.ec-chat-fab svg{width:24px;height:24px;stroke:white;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ec-chat-fab.is-open{background:#374151}
+.ec-chat-fab .ec-chat-badge{
+  position:absolute;top:-2px;right:-2px;
+  background:#ef4444;color:white;
+  width:18px;height:18px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;border:2px solid white;
+}
+
+.ec-chat-panel{
+  position:fixed;
+  bottom:92px;
+  right:24px;
+  width:380px;
+  height:560px;
+  max-height:80vh;
+  background:white;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.15);
+  display:none;
+  flex-direction:column;
+  z-index:9998;
+  overflow:hidden;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+.ec-chat-panel.is-open{display:flex}
+.ec-chat-header{
+  padding:14px 16px;
+  background:linear-gradient(135deg,#2C3DA6,#1f2d80);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+.ec-chat-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ec-chat-title svg{width:18px;height:18px}
+.ec-chat-sub{font-size:11px;opacity:0.85;font-weight:400;margin-top:1px}
+.ec-chat-close{background:none;border:none;color:white;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.ec-chat-close:hover{background:rgba(255,255,255,0.15)}
+.ec-chat-close svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.ec-chat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  background:#fafbfc;
+}
+.ec-chat-msg{
+  max-width:85%;
+  padding:9px 13px;
+  border-radius:12px;
+  font-size:13.5px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  word-wrap:break-word;
+}
+.ec-chat-msg.user{align-self:flex-end;background:#2C3DA6;color:white;border-bottom-right-radius:4px}
+.ec-chat-msg.bot{align-self:flex-start;background:white;border:1px solid #e5e7eb;color:#1f2937;border-bottom-left-radius:4px}
+.ec-chat-msg.loading{align-self:flex-start;background:white;border:1px solid #e5e7eb;color:#6b7280;font-style:italic;font-size:12.5px}
+.ec-chat-msg.loading::after{content:'';display:inline-block;width:10px;animation:ec-chat-dot 1.4s infinite}
+@keyframes ec-chat-dot{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+
+.ec-chat-suggest{
+  padding:0 14px 8px;
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+  background:#fafbfc;
+}
+.ec-chat-chip{
+  background:white;
+  border:1px solid #e5e7eb;
+  color:#374151;
+  font-size:11.5px;
+  padding:5px 10px;
+  border-radius:14px;
+  cursor:pointer;
+  transition:all 0.15s;
+  font-family:inherit;
+}
+.ec-chat-chip:hover{border-color:#2C3DA6;color:#2C3DA6;background:#eef0fb}
+
+.ec-chat-input-wrap{
+  padding:10px 14px 14px;
+  border-top:1px solid #e5e7eb;
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+  background:white;
+  flex-shrink:0;
+}
+.ec-chat-input{
+  flex:1;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:8px 12px;
+  font-size:13.5px;
+  font-family:inherit;
+  resize:none;
+  outline:none;
+  max-height:100px;
+  min-height:36px;
+  transition:border-color 0.15s;
+}
+.ec-chat-input:focus{border-color:#2C3DA6}
+.ec-chat-send{
+  width:36px;height:36px;
+  background:#2C3DA6;
+  border:none;
+  border-radius:10px;
+  color:white;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.ec-chat-send:hover{background:#1f2d80}
+.ec-chat-send:disabled{background:#9ca3af;cursor:not-allowed}
+.ec-chat-send svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.ec-chat-empty{
+  text-align:center;
+  padding:30px 16px;
+  color:#9ca3af;
+  font-size:13px;
+}
+.ec-chat-empty .ec-emoji{font-size:32px;margin-bottom:10px}
+.ec-chat-empty .ec-title{font-weight:600;color:#374151;margin-bottom:4px}
+</style>
+
+<button class="ec-chat-fab" id="ec-chat-fab" aria-label="AI Trợ lý">
+  <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  <span class="ec-chat-badge" id="ec-chat-badge">!</span>
+</button>
+
+<div class="ec-chat-panel" id="ec-chat-panel">
+  <div class="ec-chat-header">
+    <div>
+      <div class="ec-chat-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+        AI Trợ lý
+      </div>
+      <div class="ec-chat-sub">Hỏi gì về báo cáo của bạn</div>
+    </div>
+    <button class="ec-chat-close" id="ec-chat-close" aria-label="Đóng">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="ec-chat-messages" id="ec-chat-messages"></div>
+
+  <div class="ec-chat-suggest" id="ec-chat-suggest">
+    <button class="ec-chat-chip" data-msg="Tuần này tôi có gì nổi bật?">Highlights tuần này</button>
+    <button class="ec-chat-chip" data-msg="Gợi ý plan tuần sau dựa trên báo cáo gần đây">Gợi ý plan</button>
+    <button class="ec-chat-chip" data-msg="Báo cáo tôi cần cải thiện gì?">Cải thiện gì?</button>
+  </div>
+
+  <div class="ec-chat-input-wrap">
+    <textarea class="ec-chat-input" id="ec-chat-input" placeholder="Hỏi AI..." rows="1"></textarea>
+    <button class="ec-chat-send" id="ec-chat-send" aria-label="Gửi">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<script id="ec-chatbot-js">
+(function(){
+  var STORAGE_KEY = 'ec_chat_history_v1';
+  var fab = document.getElementById('ec-chat-fab');
+  var panel = document.getElementById('ec-chat-panel');
+  var closeBtn = document.getElementById('ec-chat-close');
+  var msgsEl = document.getElementById('ec-chat-messages');
+  var input = document.getElementById('ec-chat-input');
+  var sendBtn = document.getElementById('ec-chat-send');
+  var suggestEl = document.getElementById('ec-chat-suggest');
+
+  if (!fab || !panel) return;
+
+  // History (persisted to localStorage)
+  var history = [];
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) history = JSON.parse(raw) || [];
+  } catch(e){ history = []; }
+
+  function saveHistory(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-30))); } catch(e){}
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderEmpty(){
+    msgsEl.innerHTML =
+      '<div class="ec-chat-empty">' +
+        '<div class="ec-emoji">✨</div>' +
+        '<div class="ec-title">Xin chào!</div>' +
+        '<div>Tôi giúp bạn với báo cáo tuần, gợi ý plan, phân tích AI score.</div>' +
+      '</div>';
+  }
+
+  function renderHistory(){
+    if (!history.length) { renderEmpty(); return; }
+    msgsEl.innerHTML = '';
+    history.forEach(function(m){
+      var div = document.createElement('div');
+      div.className = 'ec-chat-msg ' + (m.role === 'user' ? 'user' : 'bot');
+      if (m.role === 'bot' && typeof mdToHtml === 'function') { div.innerHTML = mdToHtml(m.text); } else { div.textContent = m.text; }
+      msgsEl.appendChild(div);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function addMsg(role, text){
+    history.push({role: role, text: text});
+    saveHistory();
+    var div = document.createElement('div');
+    div.className = 'ec-chat-msg ' + (role === 'user' ? 'user' : 'bot');
+    if (role === 'bot' && typeof mdToHtml === 'function') { div.innerHTML = mdToHtml(text); } else { div.textContent = text; }
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    return div;
+  }
+
+  function showLoading(){
+    var div = document.createElement('div');
+    div.className = 'ec-chat-msg loading';
+    div.id = 'ec-chat-loading';
+    div.textContent = 'AI đang nghĩ';
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function hideLoading(){
+    var l = document.getElementById('ec-chat-loading');
+    if (l) l.remove();
+  }
+
+
+  function cleanAiError(err) {
+    var s = String(err || '');
+    s = s.replace(/AIza[A-Za-z0-9_\-]{20,}/g, 'AIza***REDACTED***');
+    s = s.replace(/([?&]key=)[^&\s'")\]\}]+/g, '$1***REDACTED***');
+    s = s.replace(/https:\/\/generativelanguage\.googleapis\.com\/[^\s'")\]\}]+/g, '[Gemini API URL redacted]');
+    if (/503|Service Unavailable|overload|unavailable|generativelanguage|key=|AIza/i.test(s)) {
+      return 'Gemini đang quá tải, thử lại sau.';
+    }
+    return s || 'Gemini đang quá tải, thử lại sau.';
+  }
+async function sendMessage(text){
+    if (!text || !text.trim()) return;
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+    addMsg('user', text);
+    showLoading();
+
+    try {
+      // Map history to Gemini format
+      var apiHistory = history.slice(0, -1).slice(-10).map(function(m){
+        return { role: m.role === 'user' ? 'user' : 'model', text: m.text };
+      });
+
+      var r = await fetch('/api/method/gemini_chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-Frappe-CSRF-Token': ((window.frappe && frappe.csrf_token) || window.csrf_token || (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] || 'token') },
+        body: JSON.stringify({ message: text, history: apiHistory })
+      });
+      var j = await r.json();
+      hideLoading();
+
+      if (j.message && j.message.success && j.message.reply) {
+        addMsg('bot', j.message.reply);
+      } else {
+        var err = cleanAiError((j.message && j.message.error) || 'Lỗi không xác định');
+        addMsg('bot', err);
+      }
+    } catch (e) {
+      hideLoading();
+      addMsg('bot', cleanAiError(e && e.message ? e.message : 'Không kết nối được AI, thử lại sau.'));
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  // Open/close
+  function openChat(){
+    panel.classList.add('is-open');
+    fab.classList.add('is-open');
+    renderHistory();
+    setTimeout(function(){ input.focus(); }, 100);
+  }
+  function closeChat(){
+    panel.classList.remove('is-open');
+    fab.classList.remove('is-open');
+  }
+
+  fab.addEventListener('click', function(){
+    if (panel.classList.contains('is-open')) closeChat();
+    else openChat();
+  });
+  closeBtn.addEventListener('click', closeChat);
+
+  // Send
+  sendBtn.addEventListener('click', function(){ sendMessage(input.value); });
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendMessage(input.value);
+    }
+  });
+  // Auto-grow textarea
+  input.addEventListener('input', function(){
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+  });
+
+  // Suggested chips
+  suggestEl.addEventListener('click', function(e){
+    var b = e.target.closest('.ec-chat-chip');
+    if (!b) return;
+    sendMessage(b.dataset.msg);
+  });
+
+  // Init render
+  renderHistory();
+})();
+
+  // Minimal markdown -> HTML for chatbot replies
+  function mdToHtml(text) {
+    if (!text) return '';
+    // Escape HTML first
+    var esc = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    // Bold **text**
+    esc = esc.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+    // Italic *text* (but not in middle of word)
+    esc = esc.replace(/(^|\s)\*([^*\n]+?)\*(?=\s|$|[.,;:!?])/g, '$1<em>$2</em>');
+    // Inline code `text`
+    esc = esc.replace(/`([^`\n]+?)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.92em;">$1</code>');
+    // Bullets: lines starting with - or *
+    var lines = esc.split('\n');
+    var out = [];
+    var inList = false;
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i];
+      var bm = ln.match(/^\s*[-\*]\s+(.+)$/);
+      if (bm) {
+        if (!inList) { out.push('<ul style="margin:6px 0;padding-left:20px;">'); inList = true; }
+        out.push('<li>' + bm[1] + '</li>');
+      } else {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push(ln);
+      }
+    }
+    if (inList) out.push('</ul>');
+    var joined = out.join('\n');
+    // Paragraph breaks: double newline -> <br><br>
+    joined = joined.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>');
+    return joined;
+  }
+  </script>
+{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function updateClock() {
+    var el = document.getElementById('clock');
+    if (!el) return;
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    el.textContent = h + ':' + m + ':' + s;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function updateGreeting() {
+    var el = document.getElementById('greeting');
+    if (!el) return;
+    var hour = new Date().getHours();
+    var prefix = 'Chào buổi sáng';
+    if (hour >= 12 && hour < 18) prefix = 'Chào buổi chiều';
+    else if (hour >= 18) prefix = 'Chào buổi tối';
+    var firstName = '{{ first_name }}';
+    el.textContent = prefix + ', ' + firstName + ' 👋';
+  }
+  updateGreeting();
+
+  var days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+  var today = new Date();
+  var dayName = days[today.getDay()];
+  var dd = String(today.getDate()).padStart(2,'0');
+  var mm = String(today.getMonth()+1).padStart(2,'0');
+  var yy = today.getFullYear();
+  var todayEl = document.getElementById('today-text');
+  if (todayEl) todayEl.textContent = 'Hôm nay là ' + dayName + ', ' + dd + ' tháng ' + (today.getMonth()+1) + ' ' + yy + ' — chúc bạn một ngày làm việc hiệu quả!';
+  var ckEl = document.getElementById('ck-date');
+  if (ckEl) ckEl.textContent = dayName + ', ' + dd + '/' + mm + '/' + yy;
+
+  /* Tính năng Check-in chưa build → redirect tới trang Coming Soon */
+  window.ecentricCheckin = function() {
+    window.location.href = '/coming-soon?tool=cham-cong';
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      var s = document.getElementById('global-search');
+      if (s) s.focus();
+    }
+  });
+})();
+</script>
+<script id="ec-home-todo-widget">
+// Replaces content of the "Cho phe duyet" panel on /home with cards driven by
+// the user's open ToDos (tabToDo). Lean ERP: tabToDo is single source of truth.
+(function(){
+  'use strict';
+  if (window._ecHomeTodoInstalled) return;
+  window._ecHomeTodoInstalled = true;
+
+  // CSS for cards
+  if (!document.getElementById('ec-home-todo-css')) {
+    var st = document.createElement('style');
+    st.id = 'ec-home-todo-css';
+    st.textContent = [
+      '.ec-todo-card { display:block; text-decoration:none; color:inherit; padding:12px 14px; border-bottom:1px solid #f3f4f6; transition:background 0.15s; }',
+      '.ec-todo-card:hover { background:#f9fafb; }',
+      '.ec-todo-card:last-child { border-bottom:none; }',
+      '.ec-todo-row1 { display:flex; align-items:center; gap:8px; font-size:11.5px; color:#6b7280; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:5px; }',
+      '.ec-todo-pill { color:#fff; border-radius:3px; padding:1px 6px; font-weight:600; font-size:10px; line-height:1.4; }',
+      '.ec-todo-type { font-weight:600; color:#4b5563; }',
+      '.ec-todo-time { margin-left:auto; color:#9ca3af; font-size:11px; text-transform:none; letter-spacing:0; }',
+      '.ec-todo-title { font-size:13px; font-weight:600; color:#111827; margin-bottom:3px; line-height:1.35; }',
+      '.ec-todo-id { font-size:11px; color:#6b7280; font-family:"DM Mono",monospace; }',
+      '.ec-todo-meta { font-size:11.5px; color:#374151; margin-top:4px; }',
+      '.ec-todo-meta b { color:#2C3DA6; }'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function findPanel() {
+    var titles = document.querySelectorAll('.panel-title');
+    for (var i = 0; i < titles.length; i++) {
+      var t = (titles[i].textContent || '').trim();
+      if (/[Cc]h[ờo]\s*ph[êe]\s*duy[ệe]t/.test(t) || /ch[oơ]\s*ph[eê]\s*duy[eệ]t/i.test(t)) {
+        return titles[i].closest('.panel');
+      }
+    }
+    return null;
+  }
+
+  function typeParam(dt) {
+    if (!dt) return '';
+    if (dt === 'GBS Purchase Order') return 'gbs_po';
+    if (dt === 'GBS Sales Order') return 'gbs_so';
+    if (dt === 'MSO Request') return 'mso';
+    if (dt === 'Service Request') return 'so';
+    if (dt === 'Procurement Request') return 'po';
+    if (dt === 'Reconciliation Request') return 'rec';
+    if (dt === 'Vendor Code Request') return 'vendor';
+    return dt.toLowerCase().replace(/\s+/g, '_');
+  }
+  function typeLabel(dt) {
+    if (!dt) return '';
+    if (dt === 'GBS Purchase Order') return 'GBS PO';
+    if (dt === 'GBS Sales Order') return 'GBS SO';
+    if (dt === 'MSO Request') return 'MSO';
+    if (dt === 'Service Request') return 'SO';
+    if (dt === 'Procurement Request') return 'PO';
+    if (dt === 'Reconciliation Request') return 'REC';
+    if (dt === 'Vendor Code Request') return 'Vendor';
+    return dt;
+  }
+  function priColor(p) {
+    if (p === 'High') return '#dc2626';
+    if (p === 'Low')  return '#10b981';
+    return '#FFC000';
+  }
+  function priLabel(p) {
+    if (p === 'High') return 'Cao';
+    if (p === 'Low')  return 'Thấp';
+    return 'TB';
+  }
+  function fmt(n) { return (Number(n)||0).toLocaleString('vi-VN'); }
+  function ago(ts) {
+    if (!ts) return '';
+    var t = new Date(ts.replace(' ', 'T')).getTime();
+    if (isNaN(t)) return '';
+    var d = Math.floor((Date.now()-t)/60000);
+    if (d < 1) return 'vừa xong';
+    if (d < 60) return d + ' phút';
+    var h = Math.floor(d/60);
+    if (h < 24) return h + ' giờ';
+    return Math.floor(h/24) + ' ngày';
+  }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var DISPLAY_LIMIT = 3;
+
+  function render(panel, items) {
+    var listEl = panel.querySelector('.approval-list');
+    if (!listEl) return;
+    if (!items || items.length === 0) {
+      listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#6b7280;font-size:13px;">Không có yêu cầu nào đang chờ duyệt</div>';
+      return;
+    }
+    var totalCount = items.length;
+    var shown = items.slice(0, DISPLAY_LIMIT);
+    var html = shown.map(function(it){
+      var href = '/approval?id=' + encodeURIComponent(it.reference_name) + '&type=' + typeParam(it.reference_type);
+      var title = it.doc_title || it.reference_name;
+      var totalLine = '';
+      if (it.doc_total && Number(it.doc_total) > 0) {
+        totalLine = '<div class="ec-todo-meta">Tổng: <b>' + fmt(it.doc_total) + ' ' + esc(it.doc_currency || 'VND') + '</b></div>';
+      }
+      return '<a href="' + href + '" class="ec-todo-card">' +
+        '<div class="ec-todo-row1">' +
+          '<span class="ec-todo-pill" style="background:' + priColor(it.priority) + '">' + priLabel(it.priority) + '</span>' +
+          '<span class="ec-todo-type">' + esc(typeLabel(it.reference_type)) + '</span>' +
+          '<span class="ec-todo-time">' + ago(it.modified) + '</span>' +
+        '</div>' +
+        '<div class="ec-todo-title">' + esc(title) + '</div>' +
+        '<div class="ec-todo-id">' + esc(it.reference_name) + '</div>' +
+        totalLine +
+      '</a>';
+    }).join('');
+    // Footer "Xem them N" link if more than DISPLAY_LIMIT
+    if (totalCount > DISPLAY_LIMIT) {
+      var moreCount = totalCount - DISPLAY_LIMIT;
+      var moreLink = '/app/todo/view/list?status=Open&allocated_to=' + encodeURIComponent(window.frappe && window.frappe.session && window.frappe.session.user || '');
+      html += '<a href="' + moreLink + '" class="ec-todo-more" style="display:block;text-align:center;padding:10px;font-size:12.5px;color:#2C3DA6;font-weight:600;text-decoration:none;background:#f9fafb;border-top:1px solid #e5e7eb;">Xem thêm ' + moreCount + ' yêu cầu →</a>';
+    }
+    listEl.innerHTML = html;
+  }
+
+  function loadTodos() {
+    var panel = findPanel();
+    if (!panel) return;
+    fetch('/api/method/gbs_user_pending_todos', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        var msg = (d && d.message) || {};
+        if (msg.success) render(panel, msg.todos || []);
+      })
+      .catch(function(e){ console.warn('[ec-home-todo] load err', e); });
+  }
+
+  // Also update "Tất cả" link to point to /app/todo with filter
+  function patchAllLink(panel) {
+    var a = panel.querySelector('.panel-action');
+    if (a) {
+      // Filter by current user, status Open
+      a.href = '/app/todo/view/list?status=Open&allocated_to=' + encodeURIComponent(window.frappe && window.frappe.session && window.frappe.session.user || '');
+    }
+  }
+
+  function init() {
+    var tries = 0;
+    var iv = setInterval(function(){
+      var panel = findPanel();
+      if (panel) {
+        clearInterval(iv);
+        patchAllLink(panel);
+        loadTodos();
+      }
+      if (++tries > 30) clearInterval(iv);
+    }, 200);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  console.log('[ec-home-todo-widget] installed');
+})();
+</script><!-- /ec-home-todo-widget -->

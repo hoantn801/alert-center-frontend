@@ -1,0 +1,46 @@
+# ============================================================================
+# Alert Center frontend workspace - .gitignore
+# ============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Generated Web Pages (build artifacts, NOT source) -----------------------
+# Source of truth = frontend/build_alert_pages.py + the home-shell snapshot
+# (kept below). The 5 HTML pages are DETERMINISTIC output of the builder and are
+# rebuilt on every deploy, so they are intentionally NOT tracked (avoids
+# source/artifact drift and noisy diffs). Run the builder before deploying a
+# fresh clone - see README.md.
+frontend/alert_center.html
+frontend/alert_policies.html
+frontend/alert_rules.html
+frontend/alert_locks.html
+frontend/alert_health.html
+
+# --- Deploy / rollback backups (operational artifacts, large, regenerated per
+#     deploy). Keep ONLY the canonical home-shell snapshot the builder reads. ---
+deploy/backups/*
+!deploy/backups/home_20260608_154510/
+deploy/backups/home_20260608_154510/*
+!deploy/backups/home_20260608_154510/main_section_html.bak.html
+
+# --- Runtime probe / diagnostic / capture outputs (may carry live order/shop
+#     data) ---
+deploy/golden_capture_*.json
+deploy/diag_omisell_list_*.json
+deploy/g22_probe_*.json
+
+# --- Secrets / credentials / cookies (must NEVER be committed) ---------------
+*.key
+*.secret
+*.pem
+.env
+.env.*
+*cookie*
+*credential*
+frappe_api_keys*
+*api_key*
+*api_secret*
+*.csv
