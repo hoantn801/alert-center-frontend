@@ -247,6 +247,10 @@ SHARED_CSS = """
 .al-blk li.blocker{background:var(--pink-50);border-color:var(--pink-50);color:var(--pink)}
 .al-blk li.warning{background:var(--yellow-50);border-color:var(--yellow-50);color:#8a6d00}
 .al-action-box{margin:10px 0;padding:10px 12px;border-radius:8px;background:var(--navy-50);color:var(--navy);font-size:13px;font-weight:600}
+.al-tech{margin-top:14px;border-top:1px solid var(--gray-200);padding-top:4px}
+.al-tech>summary{list-style:none;color:var(--gray-500);outline:none}
+.al-tech>summary::-webkit-details-marker{display:none}
+.al-tech[open]>summary{color:var(--navy)}
 .al-snippet{background:var(--gray-900);color:#e6edf3;border-radius:8px;padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:6px 0}
 .al-cap{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--gray-600)}
 .al-cap-track{flex:1;max-width:260px;background:var(--gray-100);border-radius:6px;height:12px;overflow:hidden}
@@ -1456,14 +1460,19 @@ PAGE4_CONTENT = """
       <div class="greeting"><h1>%(title)s</h1><p id="al-scope-line"></p></div>
       <div class="greeting" style="margin-top:-8px"><p style="margin:0">%(ss_copy)s</p></div>
       <div class="al-banner"><b>%(sim_mode)s</b> (DRY-RUN ONLY) &#8212; %(banner)s</div>
-      <div class="stats-strip">
-        <div class="stat-card s-yellow"><div class="stat-label">%(c_pending)s</div><div class="stat-value" id="lk-c-pending">-</div><div class="stat-meta">Pending Review</div></div>
-        <div class="stat-card s-green"><div class="stat-label">%(c_approved)s</div><div class="stat-value" id="lk-c-approved">-</div><div class="stat-meta">dry-run approved</div></div>
-        <div class="stat-card s-pink"><div class="stat-label">%(c_rejected)s</div><div class="stat-value" id="lk-c-rejected">-</div><div class="stat-meta">&#8594; Cancelled</div></div>
-        <div class="stat-card s-navy"><div class="stat-label">Skipped</div><div class="stat-value" id="lk-c-skipped">-</div><div class="stat-meta">pause/credential</div></div>
+      <div class="stats-strip" id="ss-kpis">
+        <div class="stat-card s-yellow kpi" data-ss="pending|Pending Review" role="button" tabindex="0"><div class="stat-label">%(c_pending)s</div><div class="stat-value" id="lk-c-pending">-</div><div class="stat-meta">Pending Review</div></div>
+        <div class="stat-card s-green kpi" data-ss="history|Approved" role="button" tabindex="0"><div class="stat-label">%(c_approved)s</div><div class="stat-value" id="lk-c-approved">-</div><div class="stat-meta">dry-run approved</div></div>
+        <div class="stat-card s-pink kpi" data-ss="history|Rejected" role="button" tabindex="0"><div class="stat-label">%(c_rejected)s</div><div class="stat-value" id="lk-c-rejected">-</div><div class="stat-meta">&#8594; Cancelled</div></div>
+        <div class="stat-card s-navy kpi" data-ss="history|" role="button" tabindex="0"><div class="stat-label">Skipped</div><div class="stat-value" id="lk-c-skipped">-</div><div class="stat-meta">pause/credential</div></div>
       </div>
-      <div class="panel" style="margin-bottom:14px">
-        <div class="panel-header"><div class="panel-title">%(queue_title)s</div><button class="al-btn" id="lk-refresh">%(refresh)s</button></div>
+      <div class="al-modesw" id="ss-tabs" role="tablist" style="margin:0 0 12px">
+        <button class="al-btn primary" id="ss-tab-pending" role="tab" aria-selected="true">%(tab_pending)s</button>
+        <button class="al-btn" id="ss-tab-history" role="tab" aria-selected="false">%(tab_history)s</button>
+        <button class="al-btn" id="ss-tab-pauses" role="tab" aria-selected="false">%(tab_pauses)s</button>
+      </div>
+      <div class="panel" id="ss-queue" style="margin-bottom:14px">
+        <div class="panel-header"><div class="panel-title" id="ss-queue-title">%(queue_title)s</div><button class="al-btn" id="lk-refresh">%(refresh)s</button></div>
         <div class="al-filters">
           <div><label>Brand</label><select id="f-brand"><option value="">%(all)s</option></select></div>
           <div><label>Review</label><select id="f-review_status"><option value="">%(all)s</option><option>Pending Review</option><option>Approved</option><option>Rejected</option></select></div>
@@ -1479,7 +1488,7 @@ PAGE4_CONTENT = """
         </div>
         <div class="al-pager"><span id="lk-count">-</span><span><button class="al-btn" id="lk-prev">&#8249;</button> <button class="al-btn" id="lk-next">&#8250;</button></span></div>
       </div>
-      <div class="panel">
+      <div class="panel" id="ss-pauses" hidden>
         <div class="panel-header"><div class="panel-title">%(pause_title)s</div><button class="al-btn primary" id="pz-new">+ Pause</button></div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
@@ -1496,7 +1505,7 @@ PAGE4_CONTENT = """
   <div class="al-drawer-head"><strong id="lk-d-title"></strong><button class="al-btn" id="lk-d-close">&#10005;</button></div>
   <div class="al-drawer-body">
     <div class="al-banner" style="margin-bottom:10px">DRY-RUN &#8212; %(drawer_note)s</div>
-    <dl class="al-kv" id="lk-d-kv"></dl>
+    <div id="lk-d-kv"></div>
   </div>
   <div class="al-drawer-actions">
     <button class="al-btn primary" id="lk-approve">%(approve)s</button>
@@ -1539,6 +1548,8 @@ PAGE4_CONTENT = """
     "c_pending": H("Chờ duyệt"), "c_approved": H("Đã duyệt"),
     "c_rejected": H("Từ chối"),
     "queue_title": H("Hàng đợi review (dry-run)"), "refresh": H("Làm mới"),
+    "tab_pending": H("Pending Actions"), "tab_history": H("Action History"),
+    "tab_pauses": H("Automation Pauses"),
     "all": H("Tất cả"), "apply": H("Lọc"), "qty": H("SL đề xuất"),
     "release": H("Release"), "reviewed": H("Duyệt bởi / lúc"),
     "pause_title": H("Tạm dừng tự động (Automation Pause)"),
@@ -1587,13 +1598,13 @@ tb.innerHTML=rows.map(function(z,i){return '<tr>'+
 '<td><span class="al-badge '+({Active:"al-b-active",Expired:"al-b-expired",Cancelled:"al-b-ignored"}[z.status]||"al-b-info")+'">'+A.esc(z.status)+'</span></td>'+
 '<td>'+A.esc(z.paused_by||"-")+'</td><td style="white-space:normal">'+A.esc(z.reason||"-")+'</td>'+
 '<td>'+(z.status==="Active"?('<button class="al-btn" data-pz="'+i+'">%(cancel_pause)s</button>'):"")+'</td></tr>';}).join("");}).catch(function(){});}
+function kvdl(rows){return '<dl class="al-kv">'+rows.map(function(p){return "<dt>"+p[0]+"</dt><dd>"+p[1]+"</dd>";}).join("")+'</dl>';}
 function openDrawer(r){S.current=r;$("lk-d-title").textContent=r.name;
-var kv=[["Alert",A.esc(r.alert||"-")],["Brand",A.esc(r.brand)],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],
-["Status",A.actBadge(r.status)],["Review",rvBadge(r.review_status)],["Reviewed",A.esc(r.reviewed_by?(r.reviewed_by+" / "+A.dt(r.reviewed_at)):"-")],["Review note",A.esc(r.review_note||"-")],
-["%(qty_l)s",ds1(r.locked_quantity)],["Actual stock before",ds1(r.actual_stock_before)],["Available before",ds1(r.available_stock_before)],["Buffer before",ds1(r.buffer_stock_before)],["Buffer after",ds1(r.buffer_stock_after)],
-["Lock until",A.esc(A.dt(r.lock_until))],["Release strategy",A.esc(r.release_strategy||"-")],["Release required",r.release_required?"Yes":"-"],
-["%(reason_l)s",A.esc(r.lock_reason||"-")],["API response",A.esc(r.api_response||"-")]];
-$("lk-d-kv").innerHTML=kv.map(function(p){return "<dt>"+p[0]+"</dt><dd>"+p[1]+"</dd>";}).join("");
+var trig=[["%(d_alert)s",A.esc(r.alert||"-")],["Brand",A.esc(r.brand)],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(reason_l)s",A.esc(r.lock_reason||"-")]];
+var reqa=[["%(qty_l)s",ds1(r.locked_quantity)],["Lock until",A.esc(A.dt(r.lock_until))],["Release strategy",A.esc(r.release_strategy||"-")],["Release required",r.release_required?"Yes":"-"]];
+var rev=[["Status",A.actBadge(r.status)],["Review",rvBadge(r.review_status)],["%(d_reviewed)s",A.esc(r.reviewed_by?(r.reviewed_by+" / "+A.dt(r.reviewed_at)):"-")],["%(d_note)s",A.esc(r.review_note||"-")]];
+var tech=[["Actual stock before",ds1(r.actual_stock_before)],["Available before",ds1(r.available_stock_before)],["Buffer before",ds1(r.buffer_stock_before)],["Buffer after",ds1(r.buffer_stock_after)],["API response",A.esc(r.api_response||"-")]];
+$("lk-d-kv").innerHTML='<div class="al-fsec">%(d_trigger)s</div>'+kvdl(trig)+'<div class="al-fsec">%(d_reqaction)s</div>'+kvdl(reqa)+'<div class="al-action-box">%(d_simstate)s</div><div class="al-fsec">%(d_review)s</div>'+kvdl(rev)+'<details class="al-tech"><summary class="al-fsec" style="cursor:pointer">%(d_tech)s</summary>'+kvdl(tech)+'</details>';
 var can=(r.status==="Dry Run"||r.status==="Pending"||r.status==="Skipped");
 $("lk-approve").disabled=!can;$("lk-reject").disabled=!can;
 $("al-overlay").hidden=false;$("lk-drawer").hidden=false;}
@@ -1607,10 +1618,25 @@ var now=new Date();$("z-from").value=fmt(now);$("z-until").value=fmt(new Date(no
 $("al-overlay").hidden=false;$("pz-modal").hidden=false;}
 function createPause(){A.call("api_pauses.create_pause",{brand:$("z-brand").value,platform:$("z-platform").value,seller_sku:$("z-sku").value||null,pause_from:$("z-from").value.replace("T"," ")+":00",pause_until:$("z-until").value.replace("T"," ")+":00",reason:$("z-reason").value}).then(function(){
 $("pz-modal").hidden=true;$("al-overlay").hidden=true;A.toast("%(pause_done)s");loadPauses();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+function setStockTab(tab){
+["pending","history","pauses"].forEach(function(t){var b=$("ss-tab-"+t);if(b){b.classList.toggle("primary",t===tab);b.setAttribute("aria-selected",t===tab?"true":"false");}});
+var q=$("ss-queue"),p=$("ss-pauses");
+if(tab==="pauses"){if(q)q.hidden=true;if(p)p.hidden=false;loadPauses();window.location.hash="stock-pauses";return;}
+if(p)p.hidden=true;if(q)q.hidden=false;
+$("f-review_status").value=(tab==="history")?"":"Pending Review";
+$("ss-queue-title").textContent=(tab==="history")?"%(hist_title)s":"%(queue_title)s";
+S.start=0;load();loadCounts();
+window.location.hash=(tab==="history")?"stock-history":"stock-pending";}
+function restoreTab(){var h=window.location.hash;setStockTab(h==="#stock-pauses"?"pauses":(h==="#stock-history"?"history":"pending"));}
 function init(){A.initScope("/alerts/locks",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
 var bsel=$("f-brand");Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
-load();loadCounts();loadPauses();});
+loadCounts();restoreTab();});
+["pending","history","pauses"].forEach(function(t){var b=$("ss-tab-"+t);if(b)b.onclick=function(){setStockTab(t);};});
+$("ss-tabs").addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){var b=ev.target.closest("[role=tab]");if(b){ev.preventDefault();b.click();}}});
+$("ss-kpis").addEventListener("click",function(ev){var c=ev.target.closest(".stat-card[data-ss]");if(!c)return;var p=c.getAttribute("data-ss").split("|");if(p[0]==="history"){setStockTab("history");$("f-review_status").value=p[1]||"";S.start=0;load();}else setStockTab("pending");});
+$("ss-kpis").addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){var c=ev.target.closest(".stat-card[data-ss]");if(c){ev.preventDefault();c.click();}}});
+window.addEventListener("hashchange",restoreTab);
 $("lk-apply").onclick=function(){S.start=0;load();};
 $("lk-refresh").onclick=function(){load();loadCounts();loadPauses();};
 $("lk-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);load();};
@@ -1637,7 +1663,14 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 """ % dict(VNJ,
     cancel_pause=js_escape("Huỷ pause"),
     qty_l=js_escape("SL đề xuất khoá"),
-    reason_l=js_escape("Lý do lock"))
+    reason_l=js_escape("Lý do lock"),
+    queue_title=js_escape("Hàng đợi review (dry-run)"),
+    hist_title=js_escape("Lịch sử action"),
+    d_alert=js_escape("Alert nguồn"), d_reviewed=js_escape("Duyệt bởi / lúc"),
+    d_note=js_escape("Ghi chú duyệt"),
+    d_trigger=js_escape("Trigger & bằng chứng"), d_reqaction=js_escape("Hành động đề xuất"),
+    d_simstate=js_escape("Simulation Mode — không có cập nhật tồn nào gửi sang Omisell."),
+    d_review=js_escape("Quyết định duyệt"), d_tech=js_escape("Chi tiết kỹ thuật"))
 
 
 # =================== PAGE 5: /alerts/integration-health (G1) =================
@@ -2034,10 +2067,26 @@ print("[OK] M3 asserts pass")
 
 p4 = open(os.path.join(OUTDIR, "alert_locks.html")).read()
 for el in ("DRY-RUN ONLY", "lk-rows", "lk-approve-modal", "lk-reject-modal", "pz-rows",
-           "pz-modal", "api_actions.review_action", "api_pauses.cancel_pause", "#8212;(DS1)"):
+           "pz-modal", "api_actions.review_action", "api_pauses.cancel_pause", "#8212;(DS1)",
+           # UI/UX 2026-06-15: Stock Safety restructured into three internal tabs
+           # (Pending Actions / Action History / Automation Pauses) with hash state,
+           # a clickable KPI strip and a sectioned detail drawer.
+           'id="ss-tabs"', 'id="ss-tab-pending"', 'id="ss-tab-history"',
+           'id="ss-tab-pauses"', 'id="ss-queue"', 'id="ss-pauses"', 'id="ss-kpis"',
+           "setStockTab", "restoreTab", "stock-pending", "stock-history", "stock-pauses",
+           'data-ss=', 'role="tablist"', 'role="tab"',
+           # sectioned drawer: grouped <dl> sections + collapsed Technical Details
+           'id="lk-d-kv"', "al-fsec", "al-action-box", 'class="al-tech"', "kvdl("):
     assert el in p4, "page4 missing " + el
+# Simulation Mode banner must be prominent and clearly NON-executing.
 u4 = _h.unescape(p4)
 assert "DS1" in u4 and "Omisell" in u4
+assert "Simulation Mode" in u4, "Stock Safety must show a prominent Simulation Mode banner"
+assert "Stock Safety Actions" in u4, "Stock Safety page title missing"
+assert p4.count("al-fsec") >= 4, "stock drawer should group >=4 sections"
+# Automation Pauses must live INSIDE this page, not as a standalone global nav item.
+assert "stock-pauses" in p4 and 'href="/alerts/pauses"' not in p4, \
+    "Automation Pauses must be an internal Stock Safety tab, not a global nav route"
 print("[OK] M4 asserts pass")
 
 p5 = open(os.path.join(OUTDIR, "alert_health.html")).read()
@@ -2066,7 +2115,9 @@ for fn in ("alert_center.html", "alert_policies.html", "alert_rules.html",
     # UI/UX consolidation 2026-06-15: renamed nav + terminology layer.
     assert ">Overview<" in pg2, fn + " missing Overview nav (renamed from Dashboard)"
     assert ">Stock Safety<" in pg2, fn + " missing Stock Safety nav (renamed from Locks)"
-    assert ">Automation Pauses<" not in pg2, fn + " Automation Pauses standalone nav must be removed"
+    # Automation Pauses must not be a standalone SIDEBAR nav anchor (it now lives
+    # as an internal Stock Safety tab, which is a <button>, not an <a> nav link).
+    assert "Automation Pauses</a>" not in pg2, fn + " Automation Pauses standalone nav must be removed"
     assert "RULE_LABELS" in pg2 and "ruleCell" in pg2, fn + " business-label terminology layer missing"
 print("[OK] module-shell asserts pass")
 print("[OK] UI/UX consolidation nav + terminology asserts pass")

@@ -222,3 +222,64 @@ python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_se
 
 Local implemented (commit group 1), branch + commit commands prepared for the
 owner (sandbox cannot authenticate a push). Deeper redesign deferred per above.
+
+## 14. Stock Safety pass (2026-06-15) - locks page restructure
+
+Scope: `/alerts/locks` (generated `alert_locks.html`) only. Backend untouched:
+no schema, rule-evaluation, scope-priority, API or permission change; DS1 gate
+stays closed; no real Omisell write / unlock / restore / reconciliation enabled.
+Everything on the page remains DRY-RUN / simulation.
+
+What changed (all in `frontend/build_alert_pages.py`, PAGE4 only):
+
+- Page title is now **Stock Safety Actions**. A prominent **Simulation Mode**
+  banner states no lock/buffer command is sent to Omisell (DS1 gate closed).
+- Three internal tabs replace the old flat layout: **Pending Actions**,
+  **Action History**, **Automation Pauses** - a segmented `al-modesw` tablist
+  (`#ss-tabs` -> `#ss-tab-pending|history|pauses`) with `role="tablist"/"tab"`,
+  `aria-selected`, and Enter/Space keyboard activation. Hash state
+  `#stock-pending` / `#stock-history` / `#stock-pauses` is restored on load and
+  on `hashchange` (`setStockTab` / `restoreTab`). Pending is the default.
+  - Pending Actions: review queue filtered to `Pending Review`.
+  - Action History: same table, terminal records (review filter cleared, title
+    swaps to history).
+  - Automation Pauses: the pauses panel (`#ss-pauses`) moved fully inside this
+    subview - Scheduled/Active/Expired/Cancelled states with status badges and a
+    Cancel action only on Active pauses. It is NOT a global sidebar item (the
+    module-shell assert enforces no `Automation Pauses</a>` nav anchor on any
+    page; the in-page tab is a `<button>`, allowed).
+- Compact, clickable KPI strip (`#ss-kpis`, `role="button"`, `tabindex="0"`,
+  Enter/Space): Pending / Approved / Rejected / Skipped-Failed. Clicking a card
+  jumps to the right tab and sets the review filter (`data-ss="tab|review"`).
+- Sectioned detail drawer (`#lk-d-kv`, built via `kvdl()`): **Trigger & Evidence**
+  / **Requested Action** / a prominent **Simulation State** box (`al-action-box`)
+  / **Review Decision** / **Technical Details** collapsed in `<details class=
+  "al-tech">`. Approve/Reject enable logic and required-note validation preserved.
+- Loading / empty / error states kept on both tables; business labels via the
+  existing terminology layer; ASCII-safe embedding; generated HTML git-ignored.
+
+Validation (real full assert set, run against a faithful reconstruction because
+the sandbox mount truncates the ~165 KB builder; host file is complete):
+`py_compile` OK; 5-page build OK; **all M2c/M2/M2b/M3/M4/G1/module-shell asserts
+pass** (M4 extended with: Simulation Mode banner, `#ss-tabs`/`#ss-tab-*`,
+`#ss-queue`/`#ss-pauses`/`#ss-kpis`, `setStockTab`/`restoreTab`, hash tokens,
+grouped drawer sections + collapsed `al-tech`, and a refined "no standalone
+Automation Pauses nav" check). `node --check` OK on the combined page JS;
+duplicate-id audit NONE; locks page non-ASCII bytes 0; style/script tag balance
+OK; action table header/row cells 12/12 and pauses table 10/10 aligned; no
+merge-conflict markers; secret scan clean; `frontend/alert_locks.html` confirmed
+git-ignored; only `build_alert_pages.py` shows as modified.
+
+Commit (owner runs on Windows; do NOT merge, do NOT deploy):
+
+```powershell
+cd C:\dev\ALERT_CENTER
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git status            # confirm NO generated frontend\*.html staged, no secrets
+git commit -m "Alert UI: restructure Stock Safety actions and pauses"
+git push
+# rebuild generated pages locally (artifacts, git-ignored):
+python -m py_compile frontend\build_alert_pages.py
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+# DO NOT merge, DO NOT deploy.
+```
