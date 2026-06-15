@@ -69,13 +69,12 @@ NAV_ACTIVE = to_entities(demojibake(nav_active))
 # Alert Center module menu (ASCII; svg icons from the shell's <defs>).
 _AC_NAV = [
     ("group", "Alert Center"),
-    ("/alerts", "i-grid", "Dashboard"),
-    ("/alerts#al-alert-list", "i-bell", "Alerts"),  # jumps to the alert list section on the dashboard page
+    ("/alerts", "i-grid", "Overview"),
+    ("/alerts#al-alert-list", "i-bell", "Alerts"),  # Alerts subview on the /alerts page (hash subview)
     ("/alerts/policies", "i-wallet", "Price Setup"),
     ("/alerts/rules", "i-settings", "Rules"),
-    ("/alerts/locks", "i-target", "Locks"),
+    ("/alerts/locks", "i-target", "Stock Safety"),  # route unchanged; Automation Pauses live inside this page
     ("group", "Operations"),
-    ("/alerts/locks", "i-clock", "Automation Pauses"),   # pause manager lives on locks page
     ("/alerts/integration-health", "i-sparkles", "Integration Health"),  # G1: brand readiness page
     ("group", "Workspace"),
     ("/", "i-home", "Back to Workspace"),
@@ -95,7 +94,7 @@ def ac_aside(active_route):
         # mark active only for the first link of the active route, and only for
         # real AC routes (not the catch-all /alerts shared by Dashboard+Alerts)
         is_active = (route == active_route and route not in seen_routes
-                     and label in ("Dashboard", "Price Setup", "Rules", "Locks",
+                     and label in ("Overview", "Price Setup", "Rules", "Stock Safety",
                                    "Integration Health"))
         seen_routes.add(route)
         cls = "nav-item active" if is_active else "nav-item"
@@ -324,6 +323,16 @@ SHARED_CSS = """
 .ecentric-app .al-fchip button{border:none;background:transparent;cursor:pointer;color:var(--gray-400);font-size:15px;line-height:1;padding:0 3px;height:auto}
 .ecentric-app .al-fchip button:hover{color:var(--pink)}
 .ecentric-app .al-fchip-clear{height:26px;padding:0 10px;font-size:12px}
+/* UI/UX consolidation 2026-06-15: Overview Alert Distribution card + secondary KPI */
+.ecentric-app .al-dist3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 16px;padding:8px 0 12px}
+.ecentric-app .al-dist-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);padding:6px 16px 2px}
+.ecentric-app .al-modesw{display:inline-flex;margin-left:10px;vertical-align:middle}
+.ecentric-app .al-modesw .al-btn{height:26px;font-size:12px;border-radius:0;padding:0 12px}
+.ecentric-app .al-modesw .al-btn:first-child{border-radius:6px 0 0 6px}
+.ecentric-app .al-modesw .al-btn:last-child{border-radius:0 6px 6px 0;border-left:0}
+.ecentric-app .stat-card.kpi-sec{opacity:.85}
+.ecentric-app .stat-card.kpi-sec .stat-value{font-size:21px}
+@media (max-width:900px){.ecentric-app .al-dist3{grid-template-columns:1fr}}
 [hidden]{display:none !important}
 @media (max-width:760px){.al-drawer{width:100vw}.al-kv{grid-template-columns:110px 1fr}.al-dash-grid{grid-template-columns:1fr}}
 </style>
@@ -341,6 +350,24 @@ VN = {
     "copy_ok": "Đã copy lỗi vào clipboard.",
 }
 VNJ = {k: js_escape(v) for k, v in VN.items()}
+
+# Canonical business-label map for rule codes (UI/UX consolidation 2026-06-15).
+# Backend codes are unchanged; the FE shows these labels and keeps the raw code
+# only in tooltips / technical detail. Self-contained for now; a future
+# EC Field Description DocType can supersede this via a read-only API.
+_RULE_LABELS = {
+    "below_min": "Thấp hơn giá tối thiểu",
+    "above_high": "Cao hơn ngưỡng cảnh báo",
+    "severe_price_drop": "Giảm giá nghiêm trọng",
+    "possible_missing_zero": "Nghi thiếu số 0",
+    "missing_brand_mapping": "Thiếu cấu hình brand",
+    "missing_policy": "Thiếu Price Policy",
+    "ingestion_api_failed": "Lỗi đồng bộ dữ liệu",
+    "missing_integration_credential": "Thiếu thông tin kết nối",
+    "stock_lock_api_failed": "Lỗi xử lý Stock Safety",
+}
+_RULE_LABELS_JS = "{" + ",".join(
+    '"%s":"%s"' % (k, js_escape(v)) for k, v in _RULE_LABELS.items()) + "}"
 
 # Shared JS namespace - every page loads this once.
 SHARED_JS = """
@@ -362,9 +389,9 @@ function actBadge(v){return badge(v,{"Dry Run":"al-b-dryrun","Pending":"al-b-pen
 function polBadge(v){return badge(v,{"Draft":"al-b-draft","Active":"al-b-active","Paused":"al-b-paused","Expired":"al-b-expired","Inactive":"al-b-ignored"});}
 function fillUser(route){fetch("/api/method/frappe.auth.get_logged_user",{credentials:"include"}).then(function(r){return r.json();}).then(function(j){var u=j.message||"";if(u==="Guest"){window.location.href="/login?redirect-to="+route;return;}var card=$("al-user-card");if(card){var nm=card.querySelector(".user-name"),av=card.querySelector(".avatar");if(nm)nm.textContent=u.split("@")[0];if(av)av.textContent=(u[0]||"?").toUpperCase();}}).catch(function(){});}
 function noAccess(){document.querySelector(".content").innerHTML='<div class="al-noaccess"><h2>Alert Center</h2><p>T\\u00e0i kho\\u1ea3n c\\u1ee7a b\\u1ea1n ch\\u01b0a \\u0111\\u01b0\\u1ee3c g\\u00e1n brand n\\u00e0o trong Brand Approver. Li\\u00ean h\\u1ec7 System Manager.</p></div>';}
-function initScope(route,cb){fillUser(route);call("api_alerts.my_scope").then(function(scope){cb(scope);}).catch(function(e){if(e.status===403){noAccess();}else{toast("%(err)s"+e.message);}});}
+function initScope(route,cb){fillUser(route);loadFieldHelp();call("api_alerts.my_scope").then(function(scope){cb(scope);}).catch(function(e){if(e.status===403){noAccess();}else{toast("%(err)s"+e.message);}});}
 function dateStr(d){function p(n){return (n<10?"0":"")+n;}return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());}
-function stHealth(s){var m={"Ready":"al-st-ready","Blocked":"al-st-blocked","Warning":"al-st-warning","Running":"al-st-running","Scheduler Enabled":"al-st-sched","Manual Pull Required":"al-st-manual"};return '<span class="al-st '+(m[s]||"al-st-warning")+'">'+esc(s)+'</span>';}
+function stHealth(s){var m={"Ready":"al-st-ready","Blocked":"al-st-blocked","Warning":"al-st-warning","Delayed":"al-st-warning","Running":"al-st-running","Scheduler Enabled":"al-st-sched","Manual Pull Required":"al-st-manual","Not Configured":"al-st-manual"};return '<span class="al-st '+(m[s]||"al-st-warning")+'">'+esc(s)+'</span>';}
 function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return dateStr(d);}
 function fillBrandSelect(sel,scope,opts){opts=opts||{};if(!sel)return;sel.innerHTML="";
   if(opts.allOption){var a=document.createElement("option");a.value="";a.textContent=opts.allOption;sel.appendChild(a);}
@@ -373,15 +400,26 @@ function fillBrandSelect(sel,scope,opts){opts=opts||{};if(!sel)return;sel.innerH
   brands.forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o);});
   if(!brands.length&&!opts.allOption){var d=document.createElement("option");d.value="";d.textContent=opts.emptyText||"Kh\\u00f4ng c\\u00f3 brand trong scope";d.disabled=true;sel.appendChild(d);}
   if(opts.value)sel.value=opts.value;}
-return {call:call,$:$,esc:esc,money:money,dt:dt,toast:toast,sevBadge:sevBadge,stBadge:stBadge,actBadge:actBadge,polBadge:polBadge,initScope:initScope,daysAgo:daysAgo,dateStr:dateStr,fillBrandSelect:fillBrandSelect,stHealth:stHealth};
+var RULE_LABELS=%(rule_labels)s;
+// EC Field Description adapter: ONE cached, defensive read of the custom DocType
+// (DB-only; not in app source). Records keyed "alert.rule.<code>" with a label /
+// description OVERRIDE the built-in fallback labels; if the DocType, fields, or
+// permission are unavailable the read fails silently and the fallback is used.
+var FIELD_HELP={};
+function fieldHelp(key){return FIELD_HELP[key]||null;}
+function loadFieldHelp(){return fetch("/api/method/frappe.client.get_list?doctype=EC%%20Field%%20Description&fields=[%%22name%%22,%%22label%%22,%%22description%%22]&limit_page_length=0",{credentials:"include",headers:{Accept:"application/json"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){var rows=(j&&j.message)||[];rows.forEach(function(x){if(x&&x.name)FIELD_HELP[x.name]={label:x.label||"",help:x.description||""};});}).catch(function(){});}
+function ruleLabel(c){var h=FIELD_HELP["alert.rule."+c];return (h&&h.label)||RULE_LABELS[c]||c||"-";}
+function ruleCell(c){if(!c)return "-";var l=ruleLabel(c);if(l===c)return esc(c);return '<span title="'+esc(c)+'">'+esc(l)+'</span>';}
+return {call:call,$:$,esc:esc,money:money,dt:dt,toast:toast,sevBadge:sevBadge,stBadge:stBadge,actBadge:actBadge,polBadge:polBadge,initScope:initScope,daysAgo:daysAgo,dateStr:dateStr,fillBrandSelect:fillBrandSelect,stHealth:stHealth,ruleLabel:ruleLabel,ruleCell:ruleCell,fieldHelp:fieldHelp,loadFieldHelp:loadFieldHelp};
 })();
 </script>
-""" % VNJ
+""" % dict(VNJ, rule_labels=_RULE_LABELS_JS)
 
 
 def subnav(active):
-    items = [("/alerts", "Dashboard & Alerts"), ("/alerts/policies", "Policies"),
-             ("/alerts/rules", "Rules"), ("/alerts/locks", "Locks"),
+    items = [("/alerts", "Overview"), ("/alerts#al-alert-list", "Alerts"),
+             ("/alerts/policies", "Price Setup"),
+             ("/alerts/rules", "Rules"), ("/alerts/locks", "Stock Safety"),
              ("/alerts/integration-health", "Integration Health")]
     links = "".join('<a href="%s"%s>%s</a>' % (r, ' class="active"' if r == active else "", t)
                     for r, t in items)
@@ -410,28 +448,24 @@ PAGE1_CONTENT = """
         <div class="stat-card s-navy kpi" data-kpi="open" role="button" tabindex="0" aria-pressed="false" title="%(kpi_hint)s"><div class="stat-label">%(c_open)s</div><div class="stat-value" id="al-c-open">-</div><div class="stat-meta">Open + In Review</div></div>
         <div class="stat-card s-pink kpi" data-kpi="critical" role="button" tabindex="0" aria-pressed="false" title="%(kpi_hint)s"><div class="stat-label">Critical</div><div class="stat-value" id="al-c-critical">-</div><div class="stat-meta">%(m_open)s</div></div>
         <div class="stat-card s-yellow kpi" data-kpi="warning" role="button" tabindex="0" aria-pressed="false" title="%(kpi_hint)s"><div class="stat-label">Warning</div><div class="stat-value" id="al-c-warning">-</div><div class="stat-meta">%(m_open)s</div></div>
-        <div class="stat-card s-navy kpi" data-kpi="locks" role="button" tabindex="0" title="%(kpi_locks_hint)s"><div class="stat-label">%(c_lockrev)s</div><div class="stat-value" id="al-c-lockrev">-</div><div class="stat-meta">Pending Review</div></div>
-        <div class="stat-card s-green kpi" data-kpi="resolved" role="button" tabindex="0" aria-pressed="false" title="%(kpi_hint)s"><div class="stat-label">Resolved</div><div class="stat-value" id="al-c-resolved">-</div><div class="stat-meta">%(m_range)s</div></div>
+        <div class="stat-card s-navy kpi" data-kpi="locks" role="button" tabindex="0" title="%(kpi_locks_hint)s"><div class="stat-label">%(c_lockrev)s</div><div class="stat-value" id="al-c-lockrev">-</div><div class="stat-meta">%(m_pending_ss)s</div></div>
         <div class="stat-card s-gray kpi" data-kpi="setup" role="button" tabindex="0" aria-pressed="false" title="%(kpi_setup_hint)s"><div class="stat-label">%(c_setup)s</div><div class="stat-value" id="al-c-setup">-</div><div class="stat-meta">missing_brand_mapping</div></div>
-      </div>
-      <div class="panel al-hour-panel">
-        <div class="panel-header"><div><div class="panel-title">%(hour_title)s</div><div class="al-help" style="margin-top:2px">%(hour_sub)s</div></div></div>
-        <div id="dash-hourly" class="al-hour-chart"></div>
+        <div class="stat-card s-green kpi kpi-sec" data-kpi="resolved" role="button" tabindex="0" aria-pressed="false" title="%(kpi_hint)s"><div class="stat-label">Resolved</div><div class="stat-value" id="al-c-resolved">-</div><div class="stat-meta">%(m_range)s</div></div>
       </div>
       </div>
       <div class="panel" style="margin-bottom:14px">
         <div class="al-filters">
           <div><label>%(preset)s</label><select id="f-preset"><option value="7">7 %(days_l)s</option><option value="14" selected>14 %(days_l)s</option><option value="30">30 %(days_l)s</option><option value="">%(custom)s</option></select></div>
           <div><label>Brand</label><select id="f-brand"><option value="">%(all)s</option></select></div>
+          <div><label>Platform</label><select id="f-platform"><option value="">%(all)s</option><option>Shopee</option><option>Lazada</option><option>TikTok</option><option>Other</option></select></div>
           <div><label>Severity</label><select id="f-severity"><option value="">%(all)s</option><option>Critical</option><option>Warning</option><option>Info</option></select></div>
-          <div><label>Status</label><select id="f-status"><option value="">%(all)s</option><option>Open</option><option>In Review</option><option>Closed</option><option>Resolved</option><option>Ignored</option></select></div>
-          <div style="flex:1 1 180px"><label>%(search_l)s</label><input id="f-sku" type="text" placeholder="%(sku_ph)s" title="%(sku_ph)s"></div>
+          <div style="flex:1 1 160px"><label>%(search_l)s</label><input id="f-sku" type="text" placeholder="%(sku_ph)s" title="%(sku_ph)s"></div>
           <button class="al-btn primary" id="al-apply">%(apply)s</button>
           <button class="al-btn" id="al-adv-toggle" aria-controls="al-adv" aria-expanded="false">%(advanced)s</button>
           <button class="al-btn" id="al-clear">%(clear)s</button>
         </div>
         <div class="al-adv" id="al-adv" hidden>
-          <div><label>Platform</label><select id="f-platform"><option value="">%(all)s</option><option>Shopee</option><option>Lazada</option><option>TikTok</option><option>Other</option></select></div>
+          <div><label>Status</label><select id="f-status"><option value="">%(all)s</option><option>Open</option><option>In Review</option><option>Closed</option><option>Resolved</option><option>Ignored</option></select></div>
           <div><label>Rule</label><select id="f-rule_code"><option value="">%(all)s</option><option>below_min</option><option>above_high</option><option>severe_price_drop</option><option>possible_missing_zero</option><option>missing_policy</option><option>missing_brand_mapping</option><option>missing_integration_credential</option><option>ingestion_api_failed</option><option>stock_lock_api_failed</option></select></div>
           <div><label>Owner</label><input id="f-owner" type="text" placeholder="user@email"></div>
           <div><label>%(from)s</label><input id="f-from" type="date"></div>
@@ -439,20 +473,26 @@ PAGE1_CONTENT = """
         </div>
         <div class="al-fchips" id="al-fchips" hidden></div>
       </div>
-      <div class="al-dash-grid">
-        <div class="panel"><div class="panel-header"><div class="panel-title">%(by_brand)s</div></div><div class="al-bars" id="dash-brand"></div></div>
-        <div class="panel"><div class="panel-header"><div class="panel-title">%(by_platform)s</div></div><div class="al-bars" id="dash-platform"></div></div>
-        <div class="panel"><div class="panel-header"><div class="panel-title">%(by_rule)s</div></div><div class="al-bars" id="dash-rule"></div></div>
+      <div class="panel" id="ov-trend" style="margin-bottom:14px">
+        <div class="panel-header"><div><div class="panel-title">%(trend_main)s</div><div class="al-help" style="margin-top:2px">%(trend_basis)s</div></div>
+          <div class="al-trend-legend" style="padding:0"><span><span class="al-dot" style="background:var(--navy)"></span>%(new_l)s</span><span><span class="al-dot" style="background:var(--green)"></span>Resolved</span><span><span class="al-dot" style="background:var(--gray-300)"></span>Ignored</span></div></div>
+        <div class="al-trend" id="dash-trend" style="height:150px"></div>
+      </div>
+      <div class="al-dash-grid" id="ov-dash">
+        <div class="panel" style="grid-column:1 / -1"><div class="panel-header"><div class="panel-title">%(distribution)s</div></div>
+          <div class="al-dist3"><div><div class="al-dist-h">%(by_brand)s</div><div class="al-bars" id="dash-brand"></div></div><div><div class="al-dist-h">%(by_platform)s</div><div class="al-bars" id="dash-platform"></div></div><div><div class="al-dist-h">%(by_rule)s</div><div class="al-bars" id="dash-rule"></div></div></div></div>
         <div class="panel"><div class="panel-header"><div class="panel-title">%(top_sku)s</div></div>
           <div class="al-tbl-wrap"><table class="al-tbl"><thead><tr><th>SKU</th><th>Brand</th><th>%(alerts_n)s</th><th>%(latest)s</th></tr></thead><tbody id="dash-topsku"></tbody></table></div></div>
         <div class="panel"><div class="panel-header"><div class="panel-title">%(aging)s</div></div><div class="al-bars" id="dash-aging"></div></div>
-        <div class="panel"><div class="panel-header"><div class="panel-title">%(trend)s</div></div>
-          <div class="al-trend" id="dash-trend"></div>
-          <div class="al-trend-legend"><span><span class="al-dot" style="background:var(--navy)"></span>%(new_l)s</span><span><span class="al-dot" style="background:var(--green)"></span>Resolved</span><span><span class="al-dot" style="background:var(--gray-300)"></span>Ignored</span></div></div>
       </div>
       <div class="al-note" id="al-snapshot-note"><span class="al-note-ic">&#9432;</span><span>Alerts l&#224; snapshot t&#7841;i th&#7901;i &#273;i&#7875;m ph&#225;t hi&#7879;n. T&#7841;o/s&#7917;a policy ch&#7881; &#225;p d&#7909;ng cho l&#7847;n &#273;&#225;nh gi&#225; / pull ti&#7871;p theo, kh&#244;ng c&#7853;p nh&#7853;t l&#7841;i alert c&#361;.</span></div>
-      <div class="panel" id="al-alert-list">
-        <div class="panel-header"><div class="panel-title">Alerts</div>
+      <div class="panel" id="ov-recent">
+        <div class="panel-header"><div class="panel-title">%(recent_crit)s</div>
+          <button class="al-btn primary" id="ov-viewall">%(view_all)s</button></div>
+        <div class="al-tbl-wrap"><table class="al-tbl"><thead><tr><th>%(detected)s</th><th>Severity</th><th>Brand</th><th>SKU</th><th>Rule</th><th>Gap</th><th>Status</th></tr></thead><tbody id="ov-recent-rows"></tbody></table></div>
+      </div>
+      <div class="panel" id="al-alert-list" hidden>
+        <div class="panel-header"><div class="panel-title">Alerts <span class="al-modesw" id="al-modesw"><button class="al-btn primary" id="al-mode-op">%(mode_op)s</button><button class="al-btn" id="al-mode-setup">%(mode_setup)s</button></span></div>
           <div class="al-bulkbar" id="al-bulkbar" hidden><span id="al-bulk-n">0</span> %(selected)s
             <button class="al-btn" id="al-bulk-review">%(review)s</button>
             <button class="al-btn primary" id="al-bulk-resolve">Resolve</button>
@@ -512,10 +552,17 @@ PAGE1_CONTENT = """
     "apply": H("Lọc"), "clear": H("Xoá lọc"),
     "by_brand": H("Theo brand"), "by_platform": H("Theo platform"),
     "by_rule": H("Theo rule"), "top_sku": H("Top SKU vi phạm"),
+    "m_pending_ss": H("Stock Safety chờ duyệt"),
+    "trend_main": H("Xu hướng cảnh báo"),
+    "trend_basis": H("Theo ngày trong khoảng đã chọn (New / Resolved / Ignored)"),
+    "distribution": H("Phân bố cảnh báo"),
     "alerts_n": H("Số alert"), "latest": H("Gần nhất"),
     "aging": H("SLA - tuổi alert chưa xử lý"), "trend": H("Xu hướng 14 ngày"),
     "new_l": H("Mới"), "refresh": H("Làm mới"),
     "actual": H("Giá thực"), "rec": H("Đề xuất"), "detected": H("Lần gần nhất"),
+    "recent_crit": H("Cảnh báo nghiêm trọng gần đây"),
+    "view_all": H("Xem tất cả alerts"),
+    "mode_op": H("Operational"), "mode_setup": H("Setup Issues"),
     "review": H("Nhận xử lý"), "pause": H("Tạm dừng tự động"),
     "selected": H("đã chọn:"), "sel_all": H("Chọn tất cả trong trang"),
     "occ": H("Số đơn vi phạm"),
@@ -556,10 +603,14 @@ var d=KPI_DRILL[S.kpi];if(d){Object.keys(d).forEach(function(k){f[k]=d[k];});}re
 function presetDays(){var el=$("f-preset");if(!el)return 14;var v=el.value;return v===""?null:parseInt(v,10);}
 function syncPresetDates(){var d=presetDays();if(d!=null){$("f-from").value=A.daysAgo(d);$("f-to").value=A.dateStr(new Date());}}
 function setDefaultRange(){var el=$("f-preset");if(el)el.value="14";$("f-from").value=A.daysAgo(14);$("f-to").value=A.dateStr(new Date());}
-function syncKpiActive(){Array.prototype.forEach.call(document.querySelectorAll("#al-kpis .stat-card.kpi"),function(c){var on=(c.getAttribute("data-kpi")===S.kpi);c.classList.toggle("kpi-active",on);if(c.hasAttribute("aria-pressed"))c.setAttribute("aria-pressed",on?"true":"false");});}
+function syncKpiActive(){Array.prototype.forEach.call(document.querySelectorAll("#al-kpis .stat-card.kpi"),function(c){var on=(c.getAttribute("data-kpi")===S.kpi);c.classList.toggle("kpi-active",on);if(c.hasAttribute("aria-pressed"))c.setAttribute("aria-pressed",on?"true":"false");});
+var op=$("al-mode-op"),su=$("al-mode-setup");if(op&&su){var isS=(S.kpi==="setup");op.classList.toggle("primary",!isS);su.classList.toggle("primary",isS);}}
+function setMode(setup){if(setup){S.kpi="setup";}else if(S.kpi==="setup"){S.kpi=null;}syncKpiActive();S.start=0;loadRows();renderChips();}
 function applyKpi(key){if(!key)return;
 if(key==="locks"){window.location.href="/alerts/locks";return;}
-S.kpi=(S.kpi===key)?null:key;syncKpiActive();S.start=0;loadRows();renderChips();}
+S.kpi=(S.kpi===key)?null:key;syncKpiActive();S.start=0;loadRows();renderChips();
+// a KPI drill shows the full work queue -> switch to the Alerts subview
+if(S.kpi&&window.location.hash!=="#al-alert-list"){window.location.hash="al-alert-list";}}
 var KPI_LABEL={open:"%(c_open)s",critical:"Critical",warning:"Warning",resolved:"Resolved",setup:"%(c_setup)s"};
 function renderChips(){var box=$("al-fchips");if(!box)return;var items=[];
 function add(lbl,val,clear){items.push({lbl:lbl,val:val,clear:clear});}
@@ -577,7 +628,7 @@ function bars(el,rows,cls){var max=0;rows.forEach(function(r){if(r.n>max)max=r.n
 el.innerHTML=rows.length?rows.map(function(r){return '<div class="al-bar-row"><span class="al-bar-key" title="'+A.esc(r.key)+'">'+A.esc(r.key)+'</span><span class="al-bar-track"><span class="al-bar-fill '+(cls||"")+'" style="width:'+Math.max(2,Math.round(r.n*100/(max||1)))+'%%"></span></span><span class="al-bar-n">'+r.n+'</span></div>';}).join(""):'<div class="al-empty">%(no_rows)s</div>';}
 function loadDash(){var f=filters();
 A.call("api_dashboard.kpis",{filters:f}).then(function(c){$("al-c-open").textContent=c.open;$("al-c-critical").textContent=c.critical;$("al-c-warning").textContent=c.warning;$("al-c-setup").textContent=(c.setup_issues!=null?c.setup_issues:c.missing_policy);$("al-c-lockrev").textContent=c.lock_pending_review;$("al-c-resolved").textContent=c.resolved;}).catch(function(){});
-["brand","platform","rule_code"].forEach(function(dim){A.call("api_dashboard.by_dimension",{dim:dim,filters:f}).then(function(r){bars($("dash-"+(dim==="rule_code"?"rule":dim)),r.rows,dim==="rule_code"?"crit":"");}).catch(function(){});});
+["brand","platform","rule_code"].forEach(function(dim){A.call("api_dashboard.by_dimension",{dim:dim,filters:f}).then(function(r){var rows=r.rows;if(dim==="rule_code")rows=rows.map(function(x){return {key:A.ruleLabel(x.key),n:x.n};});bars($("dash-"+(dim==="rule_code"?"rule":dim)),rows,dim==="rule_code"?"crit":"");}).catch(function(){});});
 A.call("api_dashboard.top_skus",{filters:f,limit:10}).then(function(r){var tb=$("dash-topsku");tb.innerHTML=r.rows.length?r.rows.map(function(x){return '<tr><td>'+A.esc(x.seller_sku)+'</td><td>'+A.esc(x.brand||"-")+'</td><td><b>'+x.n+'</b></td><td>'+A.esc(A.dt(x.latest))+'</td></tr>';}).join(""):'<tr><td colspan="4" class="al-empty">%(no_rows)s</td></tr>';}).catch(function(){});
 A.call("api_dashboard.aging",{filters:f}).then(function(b){bars($("dash-aging"),[{key:"< 4h",n:b.lt_4h||0},{key:"4-24h",n:b.h4_24||0},{key:"1-3 %(days)s",n:b.d1_3||0},{key:"> 3 %(days)s",n:b.gt_3d||0}],"warn");}).catch(function(){});
 A.call("api_dashboard.trend",{filters:f,days:14}).then(function(r){var max=1;r.rows.forEach(function(d){max=Math.max(max,d.new,d.resolved,d.ignored);});
@@ -599,7 +650,7 @@ A.call("api_alerts.list_alerts",{filters:listFilters(),start:S.start,page_len:S.
 if(!res.rows.length){tb.innerHTML='<tr><td colspan="17" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
 '<td class="al-chk-col"><input type="checkbox" class="al-row-chk" data-name="'+A.esc(r.name)+'"></td>'+
-'<td>'+A.sevBadge(r.severity)+'</td><td>'+A.stBadge(r.status)+'</td><td>'+A.esc(r.rule_code)+'</td>'+
+'<td>'+A.sevBadge(r.severity)+'</td><td>'+A.stBadge(r.status)+'</td><td>'+A.ruleCell(r.rule_code)+'</td>'+
 '<td>'+occBadge(r.occurrence_count)+'</td>'+
 '<td>'+A.esc(r.brand||"-")+'</td><td>'+A.esc(r.platform||"-")+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td>'+
 '<td>'+pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)+'</td><td>'+pmoney(r,r.min_price)+'</td><td>'+pmoney(r,r.baseline_price)+'</td><td>'+pgap(r)+'</td>'+
@@ -613,8 +664,8 @@ A.call("api_alerts.bulk_set_status",{names:names,new_status:status,note:note}).t
 function reload(){loadDash();loadRows();renderChips();}
 function openDrawer(r){S.current=r;S.occ=[];$("al-d-title").textContent=r.name;
 var occn=r.occurrence_count||0;
-$("al-d-sub").innerHTML=A.stBadge(r.status)+' &middot; '+A.esc(r.seller_sku||r.item||"-")+' &middot; '+A.esc(r.rule_code)+' '+A.sevBadge(r.severity)+(occn>1?' <span class="al-case-pill">'+occn+' %(case_pill)s</span>':'');
-var kv=[["Severity",A.sevBadge(r.severity)],["Status",A.stBadge(r.status)],["Rule",A.esc(r.rule_code)],["Title",A.esc(r.title)],["Brand",A.esc(r.brand||"-")],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(c_eff)s",pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)],["%(c_comp)s",A.esc(r.price_components_used||"-")],["Min",pmoney(r,r.min_price)],["Baseline",pmoney(r,r.baseline_price)],["Gap",pgap(r)],["%(c_occ)s",occBadge(occn)],["Owner",A.esc(r.owner_user||"-")],["%(c_first)s",A.esc(A.dt(r.first_seen_at||r.detected_at))],["%(c_last)s",A.esc(A.dt(r.last_seen_at||r.detected_at))],["Action",A.actBadge(r.action_status)]];
+$("al-d-sub").innerHTML=A.stBadge(r.status)+' &middot; '+A.esc(r.seller_sku||r.item||"-")+' &middot; '+A.ruleCell(r.rule_code)+' '+A.sevBadge(r.severity)+(occn>1?' <span class="al-case-pill">'+occn+' %(case_pill)s</span>':'');
+var kv=[["Severity",A.sevBadge(r.severity)],["Status",A.stBadge(r.status)],["Rule",A.ruleCell(r.rule_code)],["Title",A.esc(r.title)],["Brand",A.esc(r.brand||"-")],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(c_eff)s",pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)],["%(c_comp)s",A.esc(r.price_components_used||"-")],["Min",pmoney(r,r.min_price)],["Baseline",pmoney(r,r.baseline_price)],["Gap",pgap(r)],["%(c_occ)s",occBadge(occn)],["Owner",A.esc(r.owner_user||"-")],["%(c_first)s",A.esc(A.dt(r.first_seen_at||r.detected_at))],["%(c_last)s",A.esc(A.dt(r.last_seen_at||r.detected_at))],["Action",A.actBadge(r.action_status)]];
 $("al-d-kv").innerHTML=kv.map(function(p){return "<dt>"+p[0]+"</dt><dd>"+p[1]+"</dd>";}).join("");
 var srcb=$("al-d-source");if(r.reference_doctype==="EC Marketplace Order Log"&&r.reference_name){srcb.hidden=false;srcb.onclick=function(){window.open("/app/ec-marketplace-order-log/"+encodeURIComponent(r.reference_name),"_blank");};}else{srcb.hidden=true;}
 $("al-d-occ").innerHTML='<div class="al-help">%(loading)s</div>';
@@ -640,7 +691,7 @@ var body=rows.map(function(x){return '<tr>'+
 '<td title="'+A.esc(x.product_name||"")+'">'+A.esc(x.seller_sku||"-")+'</td>'+
 '<td class="r">'+A.money(x.rsp_price)+'</td><td class="r">'+A.money(x.seller_discount_amount)+'</td><td class="r">'+A.money(x.seller_voucher_amount)+'</td><td class="r">'+A.money(x.platform_discount_amount)+'</td><td class="r">'+A.money(x.platform_voucher_amount)+'</td>'+
 '<td class="r"><b>'+A.money(x.effective_check_price)+'</b></td><td class="r">'+A.money(x.min_price_at_check)+'</td><td class="r">'+(x.gap_percent!=null?A.esc(Math.round(x.gap_percent))+"%%":"-")+'</td>'+
-'<td>'+A.esc(x.price_components_used||"-")+'</td><td>'+A.esc(x.rule_code)+' '+A.sevBadge(x.severity)+'</td></tr>';}).join("");
+'<td>'+A.esc(x.price_components_used||"-")+'</td><td>'+A.ruleCell(x.rule_code)+' '+A.sevBadge(x.severity)+'</td></tr>';}).join("");
 $("al-d-occ").innerHTML=box+'<div class="al-occ-wrap'+(total>1?" hl":"")+'"><div class="al-occ-head"><div class="al-fsec" style="margin:0">%(s_evidence)s ('+total+')</div><div><button class="al-btn" id="al-occ-export">%(export_csv)s</button> <button class="al-btn" id="al-occ-copy">%(copy_csv)s</button></div></div><div class="al-tbl-wrap"><table class="al-occ-tbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div></div>';
 var ex=$("al-occ-export");if(ex)ex.onclick=exportOccCsv;var cp=$("al-occ-copy");if(cp)cp.onclick=copyOccCsv;}
 var OCC_CSV_COLS=["external_order_id","order_datetime","order_status","seller_sku","product_name","rsp_price","seller_discount_amount","seller_voucher_amount","platform_discount_amount","platform_voucher_amount","effective_check_price","min_price_at_check","baseline_price_at_check","gap_percent","rule_code","severity","detected_at","price_components_used"];
@@ -667,14 +718,22 @@ function fmt(d){function p(n){return (n<10?"0":"")+n;}return d.getFullYear()+"-"
 var now=new Date();$("p-from").value=fmt(now);$("p-until").value=fmt(new Date(now.getTime()+2*3600*1000));$("p-reason").value="";
 $("al-pause-modal").hidden=false;$("al-overlay").hidden=false;}
 function confirmPause(){A.call("api_pauses.create_pause",{brand:$("p-brand").value,platform:$("p-platform").value,seller_sku:$("p-sku").value||null,pause_from:$("p-from").value.replace("T"," ")+":00",pause_until:$("p-until").value.replace("T"," ")+":00",reason:$("p-reason").value}).then(function(){$("al-pause-modal").hidden=true;A.toast("%(pause_done)s");closeDrawer();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+function loadRecent(){var tb=$("ov-recent-rows");if(!tb)return;
+A.call("api_alerts.list_alerts",{filters:{severity:"Critical",status:["Open","In Review"]},start:0,page_len:5}).then(function(res){var rows=res.rows||[];
+tb.innerHTML=rows.length?rows.map(function(r){return '<tr><td>'+A.esc(A.dt(r.last_seen_at||r.detected_at))+'</td><td>'+A.sevBadge(r.severity)+'</td><td>'+A.esc(r.brand||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td><td>'+A.ruleCell(r.rule_code)+'</td><td>'+pgap(r)+'</td><td>'+A.stBadge(r.status)+'</td></tr>';}).join(""):'<tr><td colspan="7" class="al-empty">%(no_crit)s</td></tr>';}).catch(function(){tb.innerHTML='<tr><td colspan="7" class="al-empty">-</td></tr>';});}
 function applyHashNav(){
   var atList=(window.location.hash==="#al-alert-list");
-  // toggle sidebar active between Dashboard (/alerts) and Alerts (/alerts#al-alert-list)
+  // Overview (no hash) vs Alerts (#al-alert-list) subviews on /alerts.
   var links=document.querySelectorAll(".ec-sidebar a.nav-item");
   links.forEach(function(a){var hrefp=(a.getAttribute("href")||"");
     if(hrefp==="/alerts"){a.classList.toggle("active",!atList);}
     else if(hrefp.indexOf("#al-alert-list")>=0){a.classList.toggle("active",atList);}});
-  if(atList){var el=$("al-alert-list");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}
+  document.querySelectorAll(".al-subnav a").forEach(function(a){var h=a.getAttribute("href")||"";
+    if(h==="/alerts")a.classList.toggle("active",!atList);
+    else if(h.indexOf("#al-alert-list")>=0)a.classList.toggle("active",atList);});
+  var ov=$("ov-dash"),rec=$("ov-recent"),note=$("al-snapshot-note"),list=$("al-alert-list"),tr=$("ov-trend");
+  if(ov)ov.hidden=atList;if(rec)rec.hidden=atList;if(note)note.hidden=atList;if(list)list.hidden=!atList;if(tr)tr.hidden=atList;
+  if(atList){if(list)list.scrollIntoView({behavior:"smooth",block:"start"});}else{loadRecent();}
 }
 function init(){setDefaultRange();
 A.initScope("/alerts",function(scope){S.scope=scope;
@@ -684,6 +743,9 @@ syncKpiActive();renderChips();
 reload();
 applyHashNav();});
 window.addEventListener("hashchange",applyHashNav);
+var _va=$("ov-viewall");if(_va)_va.onclick=function(){window.location.hash="al-alert-list";};
+var _mo=$("al-mode-op");if(_mo)_mo.onclick=function(){setMode(false);};
+var _ms=$("al-mode-setup");if(_ms)_ms.onclick=function(){setMode(true);};
 $("al-apply").onclick=function(){S.start=0;reload();};
 $("al-clear").onclick=clearAll;
 $("f-preset").onchange=function(){syncPresetDates();S.start=0;reload();};
@@ -713,6 +775,7 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 """ % dict(VNJ, days=js_escape("ngày"),
     c_open=js_escape("Đang mở"), c_setup=js_escape("Vấn đề cấu hình"),
+    no_crit=js_escape("Không có cảnh báo nghiêm trọng đang mở."),
     kpi_l=js_escape("Thẻ KPI"), search_l=js_escape("Tìm SKU"),
     preset=js_escape("Khoảng thời gian"), custom=js_escape("Tuỳ chỉnh"),
     remove_l=js_escape("Bỏ lọc"), clear=js_escape("Xoá lọc"),
@@ -962,11 +1025,12 @@ function filters(){var f={};
 [["f-brand","brand"],["f-platform","platform"],["f-status","status"]].forEach(function(p){var v=$(p[0]).value;if(v)f[p[1]]=v;});
 var sku=$("f-sku").value.trim();if(sku)f.seller_sku=sku;
 var o=$("f-owner").value.trim();if(o)f.owner_user=o;return f;}
+function polScope(r){var t=(r.seller_sku||r.item)?"%(ps_sku)s":r.shop?"%(ps_shop)s":(r.platform&&r.platform!=="All")?"%(ps_platform)s":"%(ps_brand)s";return '<span class="al-badge al-b-info" title="%(ps_priority)s">'+t+'</span>';}
 function load(){var tb=$("pl-rows");tb.innerHTML='<tr><td colspan="11" class="al-empty">%(loading)s</td></tr>';
 A.call("api_policies.list_policies",{filters:filters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;
 if(!res.rows.length){tb.innerHTML='<tr><td colspan="11" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
-'<td>'+A.esc(r.brand)+'</td><td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
+'<td>'+A.esc(r.brand)+' '+polScope(r)+'</td><td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
 '<td>'+A.money(r.min_price)+'</td><td>'+A.money(r.target_price)+'</td><td>'+A.money(r.reference_price)+'</td>'+
 '<td>'+A.polBadge(r.status)+'</td><td>'+A.esc(r.owner_user||"-")+'</td><td>'+A.esc((r.effective_from||"")+(r.effective_to?(" \\u2192 "+r.effective_to):""))+'</td></tr>';}).join("");loadConflicts(res.rows);}
 var from=S.total?S.start+1:0;$("pl-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;
@@ -1098,6 +1162,9 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 """ % dict(VNJ, errors_l=js_escape("lỗi"), created_l=js_escape("tạo mới"),
            updated_l=js_escape("cập nhật"),
            need_brand=js_escape("Chọn Brand trước."),
+           ps_sku=js_escape("SKU-specific"), ps_shop=js_escape("Shop Policy"),
+           ps_platform=js_escape("Platform Policy"), ps_brand=js_escape("Brand fallback"),
+           ps_priority=js_escape("Ưu tiên: SKU > Shop > Platform > Brand"),
            chip_title=js_escape("Bấm để xem SKU thiếu Active policy"),
            sku_picked=js_escape("Đã chọn SKU."),
            coverage=js_escape("Coverage"), missing=js_escape("Thiếu policy"),
@@ -1225,7 +1292,7 @@ var A=window.AL,$=A.$;
 var S={scope:null,rows:[],current:null};
 var RFIELDS=["rule_code","platform","shop","seller_sku","item","severity_override","threshold_percent","severe_drop_percent","high_alert_percent","effective_from","effective_to"];
 function tierOf(o){if(o.seller_sku||o.item)return "SKU";if(o.shop)return "Shop";if(o.platform&&o.platform!=="All")return "Platform";return "Brand";}
-function tierBadge(t){var m={SKU:"al-b-critical",Shop:"al-b-pending",Platform:"al-b-dryrun",Brand:"al-b-info"};return '<span class="al-badge '+(m[t]||"al-b-info")+'">'+t+'</span>';}
+function tierBadge(t){var m={SKU:"al-b-critical",Shop:"al-b-pending",Platform:"al-b-dryrun",Brand:"al-b-info"};var L={SKU:"%(t_sku)s",Shop:"%(t_shop)s",Platform:"%(t_platform)s",Brand:"%(t_brand)s"};return '<span class="al-badge '+(m[t]||"al-b-info")+'" title="'+t+'">'+(L[t]||t)+'</span>';}
 function ruBadge(v){return '<span class="al-badge '+({Draft:"al-b-draft",Active:"al-b-active",Paused:"al-b-paused"}[v]||"al-b-info")+'">'+A.esc(v)+'</span>';}
 function filters(){var f={};[["f-brand","brand"],["f-rule_code","rule_code"],["f-status","status"]].forEach(function(p){var v=$(p[0]).value;if(v)f[p[1]]=v;});return f;}
 function canActivate(){if(!S.scope)return false;if(S.scope.supervisor)return true;var b=$("r-brand")?$("r-brand").value:null;var role=b&&S.scope.brands?S.scope.brands[b]:null;return role==="manager"||role==="leader";}
@@ -1233,7 +1300,7 @@ function load(){var tb=$("ru-rows");tb.innerHTML='<tr><td colspan="12" class="al
 A.call("api_rules.list_rules",{filters:filters()}).then(function(res){S.rows=res.rows;
 if(!res.rows.length){tb.innerHTML='<tr><td colspan="12" class="al-empty">%(no_rows)s</td></tr>';return;}
 tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
-'<td>'+A.esc(r.rule_code)+'</td><td>'+tierBadge(tierOf(r))+'</td><td>'+A.esc(r.brand)+'</td><td>'+A.esc(r.platform||"All")+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td>'+
+'<td>'+A.ruleCell(r.rule_code)+'</td><td>'+tierBadge(tierOf(r))+'</td><td>'+A.esc(r.brand)+'</td><td>'+A.esc(r.platform||"All")+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td>'+
 '<td>'+A.esc(r.severity_override||"-")+'</td><td>'+(r.threshold_percent!=null&&r.threshold_percent!==0?A.esc(r.threshold_percent)+"%%":"-")+'</td>'+
 '<td>'+(r.recommend_stock_lock?'<span class="al-badge al-b-dryrun">dry-run</span>':"-")+'</td>'+
 '<td>'+ruBadge(r.status)+'</td><td>'+A.esc(r.approved_by||"-")+'</td><td>'+A.esc((r.effective_from||"")+(r.effective_to?(" \\u2192 "+r.effective_to):""))+'</td></tr>';}).join("");}).catch(function(e){tb.innerHTML='<tr><td colspan="12" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
@@ -1285,6 +1352,8 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 })();
 </script>
 """ % dict(VNJ,
+    t_brand=js_escape("Brand Default"), t_platform=js_escape("Platform Override"),
+    t_shop=js_escape("Shop Override"), t_sku=js_escape("SKU Exception"),
     tier_label=js_escape("Tầng scope hiện tại"),
     approved_l=js_escape("duyệt bởi"),
     need_lead=js_escape("Activate/Pause cần Lead/System Manager"),
@@ -1304,7 +1373,8 @@ PAGE4_CONTENT = """
     %(SUBNAV)s
     <div class="content">
       <div class="greeting"><h1>%(title)s</h1><p id="al-scope-line"></p></div>
-      <div class="al-banner">&#9888;&#65039; DRY-RUN ONLY &#8212; %(banner)s</div>
+      <div class="greeting" style="margin-top:-8px"><p style="margin:0">%(ss_copy)s</p></div>
+      <div class="al-banner"><b>%(sim_mode)s</b> (DRY-RUN ONLY) &#8212; %(banner)s</div>
       <div class="stats-strip">
         <div class="stat-card s-yellow"><div class="stat-label">%(c_pending)s</div><div class="stat-value" id="lk-c-pending">-</div><div class="stat-meta">Pending Review</div></div>
         <div class="stat-card s-green"><div class="stat-label">%(c_approved)s</div><div class="stat-value" id="lk-c-approved">-</div><div class="stat-meta">dry-run approved</div></div>
@@ -1381,7 +1451,9 @@ PAGE4_CONTENT = """
 <div class="al-toast" id="al-toast" hidden></div>
 """ % {
     "TOPBAR": "%(TOPBAR)s", "SUBNAV": "%(SUBNAV)s",
-    "title": H("Stock Safety Lock (dry-run)"),
+    "title": H("Stock Safety Actions"),
+    "sim_mode": H("Simulation Mode"),
+    "ss_copy": H("Xem các đề xuất bảo vệ tồn kho. Không có cập nhật tồn thật nào được gửi khi Simulation Mode đang bật."),
     "banner": H("Toàn bộ action ở đây là MÔ PHỎNG. Không có lệnh khoá kho / cập nhật buffer nào được gửi sang Omisell. Real stock write đang bị khoá bởi DS1 gate."),
     "c_pending": H("Chờ duyệt"), "c_approved": H("Đã duyệt"),
     "c_rejected": H("Từ chối"),
@@ -1511,7 +1583,7 @@ PAGE5_CONTENT = """
       <div class="panel">
         <div class="panel-header"><div class="panel-title">%(tbl_title)s</div><button class="al-btn" id="ih-refresh">%(refresh)s</button></div>
         <div class="al-tbl-wrap"><table class="al-tbl">
-          <thead><tr><th>Brand</th><th>%(status)s</th><th>%(next)s</th><th>KAM</th><th>BA</th><th>BIS</th><th>Cred</th><th>On</th><th>DS1</th><th>%(lastsync)s</th><th>Breaker</th><th>Sched</th><th>%(lastrun)s</th><th>Alerts</th><th>Orders</th><th>Items</th><th>Cov%%</th></tr></thead>
+          <thead><tr><th>Brand</th><th>%(status)s</th><th>%(next)s</th><th>KAM</th><th title="Brand Approver">%(h_setup)s</th><th title="Brand Integration Settings (BIS)">%(h_integration)s</th><th title="Credential">%(h_cred)s</th><th title="BIS enabled">%(h_enabled)s</th><th title="DS1 dry-run gate">%(h_stocksafety)s</th><th>%(lastsync)s</th><th>Breaker</th><th title="In scheduler allowlist">%(h_scheduler)s</th><th>%(lastrun)s</th><th>Alerts</th><th>Orders</th><th>Items</th><th>Cov%%</th></tr></thead>
           <tbody id="ih-rows"></tbody>
         </table></div>
       </div>
@@ -1528,7 +1600,10 @@ PAGE5_CONTENT = """
     "topbar": "%(TOPBAR)s", "subnav": "%(SUBNAV)s",
     "title": H("Integration Health"),
     "intro": H("Trang chỉ ĐỌC: chẩn đoán mức sẵn sàng của brand. Không sửa site_config, không ghi Omisell/stock, DS1 vẫn khoá."),
-    "c_ready": H("Sẵn sàng"), "c_manual": H("Cần pull thủ công"),
+    "c_ready": H("Sẵn sàng"), "c_manual": H("Chưa cấu hình"),
+    "h_setup": H("Brand Setup"), "h_integration": H("Integration"),
+    "h_cred": H("Credential"), "h_enabled": H("Pull Enabled"),
+    "h_stocksafety": H("Stock Safety"), "h_scheduler": H("Scheduler"),
     "m_blocked": H("cần khắc phục"), "m_warning": H("cần chú ý"),
     "m_manual": H("preview rồi pull"),
     "cap_title": H("Dung lượng dữ liệu (Log + Item) vs ngưỡng review 2M"),
@@ -1563,12 +1638,16 @@ function load(){
   A.call("api_brands.list_brand_readiness").then(render).catch(function(e){A.toast("%(err)s"+e.message);});
 }
 
+// Frontend readiness classification (truthful, from the existing payload):
+// a brand with NO integration settings reads "Not Configured" rather than the
+// backend's "Blocked" (which is meant for a configured-but-failing brand).
+function ihStatus(r){if(!r.bis_exists&&(r.status==="Blocked"||!r.status))return "Not Configured";return r.status;}
 function render(d){
   S.rows=d.brands||[]; S.th=d.thresholds||{};
   var c={ready:0,blocked:0,warning:0,manual:0};
-  S.rows.forEach(function(r){var s=r.status;
-    if(s==="Blocked")c.blocked++; else if(s==="Warning")c.warning++;
-    else if(s==="Manual Pull Required")c.manual++; else c.ready++;});
+  S.rows.forEach(function(r){var s=ihStatus(r);
+    if(s==="Not Configured")c.manual++; else if(s==="Blocked")c.blocked++;
+    else if(s==="Warning"||s==="Delayed"||s==="Manual Pull Required")c.warning++; else c.ready++;});
   $("ih-c-ready").textContent=c.ready;$("ih-c-blocked").textContent=c.blocked;
   $("ih-c-warning").textContent=c.warning;$("ih-c-manual").textContent=c.manual;
   if(d.capacity){var cap=d.capacity;$("ih-cap-panel").hidden=false;
@@ -1583,7 +1662,7 @@ function render(d){
     var run=r.running?'<span class="al-run-dot" title="running"></span>':"";
     return '<tr data-i="'+i+'">'+
       '<td><strong>'+A.esc(r.brand)+'</strong></td>'+
-      '<td>'+A.stHealth(r.status)+run+'</td>'+
+      '<td>'+A.stHealth(ihStatus(r))+run+'</td>'+
       '<td>'+A.esc((r.action&&r.action.label)||"-")+'</td>'+
       '<td>'+A.esc(r.kam_owner||"-")+'</td>'+
       '<td>'+A.esc(r.ba_status||"-")+'</td>'+
@@ -1803,8 +1882,13 @@ for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-agin
            'id="al-kpis"', 'id="al-c-setup"', 'data-kpi="setup"',
            'data-kpi="open"', "applyKpi", "listFilters", "setup_only",
            'id="f-preset"', 'id="al-adv"', 'id="al-fchips"', "renderChips",
-           "kpi-active"):
+           "kpi-active",
+           # UI/UX consolidation 2026-06-15: Overview/Alerts subview split +
+           # Recent Critical + EC Field Description adapter.
+           'id="ov-dash"', 'id="ov-recent"', 'id="ov-recent-rows"',
+           'id="ov-viewall"', "loadRecent", "loadFieldHelp", "FIELD_HELP"):
     assert el in p1, "page1 missing " + el
+assert 'id="al-alert-list" hidden' in p1, "Alerts work-queue must be a hidden subview (not on Overview)"
 # stale KPI label must be gone (missing_brand_mapping is NOT "missing policy")
 assert "al-c-missing" not in p1, "stale al-c-missing KPI id must be removed"
 assert 'placeholder="seller_sku"' not in p1, "old SKU placeholder must be replaced"
@@ -1876,4 +1960,10 @@ for fn in ("alert_center.html", "alert_policies.html", "alert_rules.html",
     assert "Back to Workspace" in pg2
     assert "coming-soon?tool=" not in pg2, fn + " generic nav leak"
     assert ">Integration Health<" in pg2, fn + " missing Integration Health nav slot"
+    # UI/UX consolidation 2026-06-15: renamed nav + terminology layer.
+    assert ">Overview<" in pg2, fn + " missing Overview nav (renamed from Dashboard)"
+    assert ">Stock Safety<" in pg2, fn + " missing Stock Safety nav (renamed from Locks)"
+    assert ">Automation Pauses<" not in pg2, fn + " Automation Pauses standalone nav must be removed"
+    assert "RULE_LABELS" in pg2 and "ruleCell" in pg2, fn + " business-label terminology layer missing"
 print("[OK] module-shell asserts pass")
+print("[OK] UI/UX consolidation nav + terminology asserts pass")
