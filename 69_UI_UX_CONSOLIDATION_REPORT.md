@@ -515,3 +515,166 @@ python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_se
 
 Prior passes (commits 1-6 in 15.3) are committed and pushed on the branch; they
 are NOT merged and NOT deployed.
+
+## 16. Visual-polish pass (2026-06-15) - donut + Price Setup actions
+
+Focused visual polish from owner review. Only `frontend/build_alert_pages.py`
+changed; backend untouched (no schema / rule / scope / API / permission change);
+DS1 stays closed; generated HTML git-ignored. Pages NOT in scope (Alerts, Rules
+structure, Stock Safety, Integration Health) are unchanged except for the shared
+info-icon spacing. NOT merged, NOT deployed.
+
+### 16.1 Concentric-donut Alert Distribution (Overview)
+
+The three horizontal bar columns (`al-dist3`: Brand / Platform / Rule) are
+replaced by one concentric-donut SVG in the same full-width card, drawn with the
+existing inline-SVG approach (no external chart library).
+
+Implementation details:
+
+- Structure: a 200x200 `<svg id="ov-donut">` with three rings - outer = Brand,
+  middle = Platform, inner = Rule - plus a centre `<circle>` + `<text
+  id="ov-donut-total">` showing the total alert count, and an HTML legend
+  (`#ov-donut-legend`) on the right grouped by dimension with category name,
+  count and percentage.
+- Data: one `api_dashboard.by_dimension` read per dimension (brand / platform /
+  rule_code), fetched together via `Promise.all`. The denominator for ALL three
+  rings is the SAME total = sum of the brand-dimension counts (= total alerts in
+  the window), so every ring's percentages are comparable. Each ring shows the
+  Top 3 categories by count plus an aggregated "Other" segment
+  (`Other = total - sum(top3)`), so a ring is never more than four segments.
+- Labels: Rule segments use the business label (`A.ruleLabel`) with the raw code
+  only in the tooltip - no raw snake_case. "(none)" is shown for empty keys.
+- Geometry: annular sectors via a small `donutArc(cx,cy,rOuter,rInner,a0,a1)`
+  path generator (two arcs + two radial lines), starting at 12 o'clock, clockwise.
+- Colour: a single 4-step navy ramp (`#27406a / #4f6f9f / #86a0c4 / #c8d2e0`,
+  Other = lightest) - four colours total across the whole chart, deliberately not
+  matching the reference image, readable contrast.
+- Interaction: every segment AND every legend row is `tabindex="0"`
+  `role="button"` with an `aria-label` and an SVG `<title>` carrying "dimension,
+  category, count, percentage". Click (or Enter/Space) on a clickable segment
+  applies the matching dashboard filter (`f-brand` / `f-platform` /
+  `f-rule_code`, raw value) and calls `reload()` so the whole Overview refilters;
+  "Other"/"(none)" segments are inert (`data-noclick`). Handlers are delegated on
+  the SVG and the legend (`donutDelegate` / `donutKey` -> `donutClick`).
+- Layout: donut + legend in a flex wrap; the card stays full-width above Top SKU
+  and Aging, compact (210px donut) and centres the donut below 1100px so it stays
+  readable at 1366px.
+- Builder asserts added: `id="ov-donut"`, `id="ov-donut-legend"`,
+  `id="ov-donut-total"`, the three ring defs (`dim:"brand"/"platform"/"rule"`),
+  `loadDonut` / `renderDonut` / `donutClick` / `donutArc`, and `data-dim="`; the
+  obsolete `al-dist3` / `dash-brand` / `dash-platform` / `dash-rule` ids were
+  removed from the page-1 assert list.
+
+### 16.2 Info-icon spacing (Price Setup + Rules, shared)
+
+The shared `.al-help-i` rule was tuned: `margin-left:7px` (was 4px), `font-size:12px`
+(slightly smaller/subtler), default `color:var(--gray-400)` (muted neutral),
+`display:inline-flex; align-items:center; line-height:1` (vertically centred with
+the label), `transition:color .15s`, and a clearer hover/focus state (navy +
+focus ring). Because the class is shared, spacing is now consistent across every
+Price Setup and Rules label. Tooltip behaviour and the EC Field Description
+adapter are unchanged.
+
+### 16.3 Price Setup contextual lifecycle footer + status badge
+
+The footer no longer shows Save + Active + Paused + Draft at once. It now shows at
+most two lifecycle buttons chosen by the record's current status, plus a status
+badge next to the drawer title (`#pl-d-status`, `A.polBadge`). `refreshFooter()`
+(invoked from `openDrawer` and on brand change via `applyCaps`) sets the labels,
+visibility and permission-driven `disabled` state; after a successful transition
+the drawer closes and the list reloads, so reopening reflects the new status.
+
+Exact behaviour by status:
+
+| Status | Primary (id `pl-save`) | Secondary (id `pl-life`) | More menu (id `pl-st-draft`) |
+|---|---|---|---|
+| New / Draft | "Save" | "Activate" -> Active (needs can_activate) | hidden |
+| Active | "Save Changes" | "Pause" -> Paused (needs can_manage) | "Set to Draft" -> Draft |
+| Paused | "Save Changes" | "Resume" -> Active (needs can_activate) | "Set to Draft" -> Draft |
+
+The standalone Draft button is removed from the footer; because returning to
+Draft is a real backend transition (`set_policy_status('Draft')`), it lives under
+a small "More" menu for Active/Paused records only. No arrow glyphs remain on any
+lifecycle button. Backend APIs (`api_policies.save_policy`,
+`api_policies.set_policy_status`), the Active-threshold validation warning, and
+the `can_manage` / `can_activate` permission checks are all preserved; no new
+status was invented. Builder asserts added: `#pl-d-status`, `#pl-life`,
+`#pl-more`, `#pl-st-draft`, `refreshFooter`, `curStatus`, `set_policy_status`,
+`function save()`; negatives for `#pl-st-active` / `#pl-st-paused` and for the
+three `&#8594;` arrow labels.
+
+### 16.4 Validation output
+
+Run against a faithful reconstruction (the sandbox mount truncates the now ~185 KB
+builder; the host file is complete - every edit applied to the host and the
+tail-assert edits replayed deterministically via unique anchors, then the REAL
+assert block executed):
+
+```
+py_compile OK
+[OK] built out/alert_center.html (100977 bytes)
+[OK] built out/alert_policies.html (100198 bytes)
+[OK] built out/alert_rules.html (82180 bytes)
+[OK] built out/alert_locks.html (78355 bytes)
+[OK] built out/alert_health.html (71332 bytes)
+[OK] M2c policy-drawer asserts pass
+[OK] M2/M2b dashboard asserts pass        (+ donut: ov-donut, 3 ring defs, total, legend, handlers)
+[OK] M2d Price Setup contextual-footer asserts pass   (badge, pl-life, no arrows, no Active/Paused btns)
+[OK] M3 asserts pass
+[OK] M4 asserts pass
+[OK] G1 integration-health asserts pass
+[OK] module-shell asserts pass
+[OK] UI/UX consolidation nav + terminology asserts pass
+```
+
+Other checks: `node --check` OK on all five pages' inline JS; duplicate-id audit
+NONE on all five; dead-button audit NONE unbound (overview + policies, donut and
+contextual-footer handlers verified); selector/action audit - donut click +
+keyboard delegated (`donutDelegate`/`donutKey`), footer `pl-life`/`pl-more`/
+`pl-st-draft` wired; non-ASCII bytes 0 on all five; style/script tag balance OK;
+Price Setup table header/row alignment unchanged; no merge-conflict markers;
+secret scan clean; no trailing whitespace in edited ranges; all five
+`frontend/alert_*.html` confirmed git-ignored.
+
+### 16.5 Preview guidance
+
+The generated pages need Frappe + live data to show real distributions, so the
+truest preview is on the bench site after rebuild. To eyeball layout/markup at
+1366px and 1920px locally (artifacts are git-ignored):
+
+```powershell
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+start frontend\alert_center.html     # donut (needs the page served by Frappe for live data)
+start frontend\alert_policies.html   # open a policy -> contextual footer + status badge
+```
+
+On the bench site: open `/alerts` (Overview) - the Alert Distribution card shows
+the concentric donut; hover a segment for the dimension/category/count/percent
+tooltip; click a segment to filter. Open `/alerts/policies`, edit a Draft vs an
+Active vs a Paused policy to see the footer change (Save+Activate / Save
+Changes+Pause / Save Changes+Resume) and the status badge by the title.
+
+### 16.6 Commit + push (owner runs on Windows)
+
+The sandbox git working tree reads a truncated copy of the large builder, so a
+commit/stage from the sandbox would corrupt the file. As with the prior passes
+(committed on Windows as `dfcd32e`, `f38c52a`), the owner runs:
+
+```powershell
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git status   # confirm NO generated frontend\*.html staged, no secrets
+git commit -m "Alert UI: polish distribution chart and Price Setup actions"
+git push     # same branch: feat/alert-ui-ux-consolidation
+```
+
+Commit hash: assigned by the owner's Windows commit (the prior pass is HEAD
+`f38c52a`; this pass commits on top of it). NOT merged, NOT deployed.
+
+### 16.7 Status
+
+- committed: NO (staged in working tree; command in 16.6) · pushed: NO · merged: NO · deployed: NO

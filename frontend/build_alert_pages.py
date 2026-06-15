@@ -142,7 +142,10 @@ SHARED_CSS = """
 .al-drawer-body{padding:14px 18px;overflow-y:auto;flex:1}
 .al-kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:13px;margin-bottom:14px}
 .al-kv dt{color:var(--gray-500)}.al-kv dd{margin:0;color:var(--gray-900);font-weight:500;word-break:break-word;white-space:normal}
-.al-drawer-actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;border-top:1px solid var(--gray-200)}
+.al-drawer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--gray-200)}
+.al-more{position:relative;margin-left:auto}
+.al-more-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:#fff;border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.16);padding:6px;min-width:150px;z-index:80}
+.al-more-menu .al-btn{width:100%;justify-content:flex-start}
 .al-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:55}
 .al-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;box-shadow:0 24px 64px rgba(15,23,42,.25);z-index:70;width:460px;max-width:94vw;max-height:88vh;overflow-y:auto;padding:18px}
 .al-modal.wide{width:760px}
@@ -328,11 +331,26 @@ SHARED_CSS = """
 .ecentric-app .al-fchip button:hover{color:var(--pink)}
 .ecentric-app .al-fchip-clear{height:26px;padding:0 10px;font-size:12px}
 /* UI/UX consolidation 2026-06-15: Overview Alert Distribution card + secondary KPI */
-.ecentric-app .al-dist3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 16px;padding:8px 0 12px}
-.ecentric-app .al-dist-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);padding:6px 16px 2px}
-.ecentric-app .al-help-i{display:inline-flex;cursor:help;color:var(--gray-400);font-size:13px;margin-left:4px;vertical-align:middle}
+/* RC polish 2026-06-15: concentric-donut distribution (replaces 3 bar columns) */
+.ecentric-app .al-donut-wrap{display:flex;align-items:center;gap:24px;padding:10px 16px 14px;flex-wrap:wrap}
+.ecentric-app .al-donut{flex:0 0 auto;width:210px;height:210px}
+.ecentric-app .al-donut path{cursor:pointer;transition:opacity .12s}
+.ecentric-app .al-donut path[data-noclick]{cursor:default}
+.ecentric-app .al-donut path:hover{opacity:.82}
+.ecentric-app .al-donut path:focus-visible{outline:2px solid var(--navy);outline-offset:1px}
+.ecentric-app .al-donut-legend{flex:1 1 280px;min-width:240px;display:flex;flex-direction:column;gap:12px}
+.ecentric-app .al-dleg-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);margin-bottom:5px}
+.ecentric-app .al-dleg-row{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:6px;cursor:pointer;font-size:12.5px}
+.ecentric-app .al-dleg-row[data-noclick]{cursor:default}
+.ecentric-app .al-dleg-row:hover{background:var(--gray-50)}
+.ecentric-app .al-dleg-row:focus-visible{outline:2px solid var(--navy);outline-offset:1px}
+.ecentric-app .al-dleg-sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+.ecentric-app .al-dleg-lbl{flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--gray-800)}
+.ecentric-app .al-dleg-n{font-weight:700;color:var(--gray-900)}
+.ecentric-app .al-dleg-pct{color:var(--gray-500);min-width:42px;text-align:right}
+.ecentric-app .al-help-i{display:inline-flex;align-items:center;justify-content:center;cursor:help;color:var(--gray-400);font-size:12px;margin-left:7px;vertical-align:middle;line-height:1;transition:color .15s}
 .ecentric-app .al-help-i:hover{color:var(--navy)}
-.ecentric-app .al-help-i:focus-visible{outline:2px solid var(--navy);outline-offset:1px;border-radius:3px}
+.ecentric-app .al-help-i:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:3px;color:var(--navy)}
 .ecentric-app .al-tierleg{display:inline-flex;align-items:center;gap:2px;cursor:help;font-size:12.5px;color:var(--gray-600)}
 .ecentric-app .al-tierleg:hover{color:var(--navy)}
 .ecentric-app .al-tierleg:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:4px}
@@ -346,7 +364,7 @@ SHARED_CSS = """
 .ecentric-app .al-modesw .al-btn:last-child{border-radius:0 6px 6px 0;border-left:0}
 .ecentric-app .stat-card.kpi-sec{opacity:.85}
 .ecentric-app .stat-card.kpi-sec .stat-value{font-size:21px}
-@media (max-width:900px){.ecentric-app .al-dist3{grid-template-columns:1fr}}
+@media (max-width:1100px){.ecentric-app .al-donut-wrap{justify-content:center}}
 [hidden]{display:none !important}
 @media (max-width:760px){.al-drawer{width:100vw}.al-kv{grid-template-columns:110px 1fr}.al-dash-grid{grid-template-columns:1fr}}
 </style>
@@ -497,8 +515,11 @@ PAGE1_CONTENT = """
         <div class="al-trend" id="dash-trend" style="height:150px"></div>
       </div>
       <div class="al-dash-grid" id="ov-dash">
-        <div class="panel" style="grid-column:1 / -1"><div class="panel-header"><div class="panel-title">%(distribution)s</div></div>
-          <div class="al-dist3"><div><div class="al-dist-h">%(by_brand)s</div><div class="al-bars" id="dash-brand"></div></div><div><div class="al-dist-h">%(by_platform)s</div><div class="al-bars" id="dash-platform"></div></div><div><div class="al-dist-h">%(by_rule)s</div><div class="al-bars" id="dash-rule"></div></div></div></div>
+        <div class="panel" style="grid-column:1 / -1"><div class="panel-header"><div class="panel-title">%(distribution)s</div><span style="font-size:12px;color:var(--gray-500)">%(dist_basis)s</span></div>
+          <div class="al-donut-wrap">
+            <svg class="al-donut" id="ov-donut" viewBox="0 0 200 200" role="img" aria-label="%(distribution)s"></svg>
+            <div class="al-donut-legend" id="ov-donut-legend"></div>
+          </div></div>
         <div class="panel"><div class="panel-header"><div class="panel-title">%(top_sku)s</div></div>
           <div class="al-tbl-wrap"><table class="al-tbl"><thead><tr><th>SKU</th><th>Brand</th><th>%(alerts_n)s</th><th>%(latest)s</th></tr></thead><tbody id="dash-topsku"></tbody></table></div></div>
         <div class="panel"><div class="panel-header"><div class="panel-title">%(aging)s</div></div><div class="al-bars" id="dash-aging"></div></div>
@@ -574,6 +595,7 @@ PAGE1_CONTENT = """
     "trend_main": H("Xu hướng cảnh báo"),
     "trend_basis": H("Theo ngày trong khoảng đã chọn (New / Resolved / Ignored)"),
     "distribution": H("Phân bố cảnh báo"),
+    "dist_basis": H("Brand (ngoài) · Platform (giữa) · Rule (trong) · cùng mẫu số tổng alert"),
     "alerts_n": H("Số alert"), "latest": H("Gần nhất"),
     "aging": H("SLA - tuổi alert chưa xử lý"), "trend": H("Xu hướng 14 ngày"),
     "new_l": H("Mới"), "refresh": H("Làm mới"),
@@ -645,9 +667,49 @@ function clearAll(){S.kpi=null;["f-severity","f-status","f-rule_code","f-brand",
 function toggleAdv(){var a=$("al-adv");if(!a)return;var hidden=a.hasAttribute("hidden");if(hidden)a.removeAttribute("hidden");else a.setAttribute("hidden","");var t=$("al-adv-toggle");if(t)t.setAttribute("aria-expanded",hidden?"true":"false");}
 function bars(el,rows,cls){var max=0;rows.forEach(function(r){if(r.n>max)max=r.n;});
 el.innerHTML=rows.length?rows.map(function(r){return '<div class="al-bar-row"><span class="al-bar-key" title="'+A.esc(r.key)+'">'+A.esc(r.key)+'</span><span class="al-bar-track"><span class="al-bar-fill '+(cls||"")+'" style="width:'+Math.max(2,Math.round(r.n*100/(max||1)))+'%%"></span></span><span class="al-bar-n">'+r.n+'</span></div>';}).join(""):'<div class="al-empty">%(no_rows)s</div>';}
+// ---- concentric-donut distribution (no external chart lib; same SVG approach) ----
+// Outer ring = Brand, middle = Platform, inner = Rule. ALL rings use the SAME
+// total (sum of brand rows = total alerts in the filtered window) as denominator,
+// so every percentage is comparable. Top 3 categories + an aggregated "Other".
+var DONUT_PAL=["#27406a","#4f6f9f","#86a0c4","#c8d2e0"]; // navy ramp; Other = lightest (few colours)
+function donutTop3(rows,total){var r=(rows||[]).slice().sort(function(a,b){return b.n-a.n;});
+var top=r.slice(0,3);var used=top.reduce(function(s,x){return s+x.n;},0);
+var other=Math.max(0,total-used);
+var segs=top.map(function(x,i){return {raw:x.key,n:x.n,i:i,other:false};});
+if(other>0)segs.push({raw:null,n:other,i:3,other:true});
+return segs;}
+function donutArc(cx,cy,ro,ri,a0,a1){function p(r,a){var t=(a-90)*Math.PI/180;return [(cx+r*Math.cos(t)).toFixed(2),(cy+r*Math.sin(t)).toFixed(2)];}
+var lg=(a1-a0)>180?1:0;var o0=p(ro,a0),o1=p(ro,a1),i1=p(ri,a0),i0=p(ri,a1);
+return "M"+o0[0]+","+o0[1]+"A"+ro+","+ro+" 0 "+lg+" 1 "+o1[0]+","+o1[1]+"L"+i1[0]+","+i1[1]+"A"+ri+","+ri+" 0 "+lg+" 0 "+i0[0]+","+i0[1]+"Z";}
+function dispOf(dim,raw,other){if(other)return "%(other_l)s";if(raw==null||raw==="")return "%(none_l)s";return dim==="rule"?A.ruleLabel(raw):raw;}
+function loadDonut(f){Promise.all([
+A.call("api_dashboard.by_dimension",{dim:"brand",filters:f}),
+A.call("api_dashboard.by_dimension",{dim:"platform",filters:f}),
+A.call("api_dashboard.by_dimension",{dim:"rule_code",filters:f})
+]).then(function(res){renderDonut({brand:res[0].rows||[],platform:res[1].rows||[],rule:res[2].rows||[]});}).catch(function(){});}
+function renderDonut(data){var svg=$("ov-donut"),leg=$("ov-donut-legend");if(!svg)return;
+var total=data.brand.reduce(function(s,x){return s+x.n;},0);
+var cx=100,cy=100;
+var RINGS=[{dim:"brand",label:"%(by_brand)s",filt:"f-brand",ro:92,ri:71,rows:data.brand},
+{dim:"platform",label:"%(by_platform)s",filt:"f-platform",ro:67,ri:46,rows:data.platform},
+{dim:"rule",label:"%(by_rule)s",filt:"f-rule_code",ro:42,ri:21,rows:data.rule}];
+if(!total){svg.innerHTML='<text x="100" y="104" text-anchor="middle" font-size="12" fill="var(--gray-400)">%(no_rows)s</text>';leg.innerHTML="";return;}
+var paths="",legH="";
+RINGS.forEach(function(R){var segs=donutTop3(R.rows,total);var a=0;
+segs.forEach(function(s){var sweep=s.n/total*360;var a1=a+sweep;var disp=dispOf(R.dim,s.raw,s.other);
+var pct=(s.n*100/total);var pctS=(pct<1?pct.toFixed(1):Math.round(pct))+"%%";
+var fill=DONUT_PAL[s.i];var noclick=(s.other||s.raw==null||s.raw==="")?' data-noclick="1"':"";
+var aria=R.label+", "+disp+", "+s.n+", "+pctS;
+paths+='<path d="'+donutArc(cx,cy,R.ro,R.ri,a,a1)+'" fill="'+fill+'" data-dim="'+R.dim+'" data-filt="'+R.filt+'" data-raw="'+(s.raw==null?"":A.esc(String(s.raw)))+'"'+noclick+' tabindex="0" role="button" aria-label="'+A.esc(aria)+'"><title>'+A.esc(aria)+'</title></path>';
+a=a1;});
+legH+='<div class="al-dleg-group"><div class="al-dleg-h">'+R.label+'</div>'+segs.map(function(s){var disp=dispOf(R.dim,s.raw,s.other);var pct=(s.n*100/total);var pctS=(pct<1?pct.toFixed(1):Math.round(pct))+"%%";var noclick=(s.other||s.raw==null||s.raw==="")?' data-noclick="1"':' tabindex="0" role="button"';
+return '<div class="al-dleg-row" data-dim="'+R.dim+'" data-filt="'+R.filt+'" data-raw="'+(s.raw==null?"":A.esc(String(s.raw)))+'"'+noclick+'><span class="al-dleg-sw" style="background:'+DONUT_PAL[s.i]+'"></span><span class="al-dleg-lbl" title="'+A.esc(disp)+'">'+A.esc(disp)+'</span><span class="al-dleg-n">'+s.n+'</span><span class="al-dleg-pct">'+pctS+'</span></div>';}).join("")+'</div>';});
+var center='<circle cx="100" cy="100" r="20" fill="#fff"/><text x="100" y="97" text-anchor="middle" font-size="20" font-weight="700" fill="var(--gray-900)" id="ov-donut-total">'+total+'</text><text x="100" y="111" text-anchor="middle" font-size="8" fill="var(--gray-500)">%(total_l)s</text>';
+svg.innerHTML=paths+center;leg.innerHTML=legH;}
+function donutClick(t){if(!t||t.getAttribute("data-noclick"))return;var filt=t.getAttribute("data-filt"),raw=t.getAttribute("data-raw");if(!filt||!raw)return;var el=$(filt);if(!el)return;el.value=raw;S.start=0;reload();}
 function loadDash(){var f=filters();
 A.call("api_dashboard.kpis",{filters:f}).then(function(c){$("al-c-open").textContent=c.open;$("al-c-critical").textContent=c.critical;$("al-c-warning").textContent=c.warning;$("al-c-setup").textContent=(c.setup_issues!=null?c.setup_issues:c.missing_policy);$("al-c-lockrev").textContent=c.lock_pending_review;$("al-c-resolved").textContent=c.resolved;}).catch(function(){});
-["brand","platform","rule_code"].forEach(function(dim){A.call("api_dashboard.by_dimension",{dim:dim,filters:f}).then(function(r){var rows=r.rows;if(dim==="rule_code")rows=rows.map(function(x){return {key:A.ruleLabel(x.key),n:x.n};});bars($("dash-"+(dim==="rule_code"?"rule":dim)),rows,dim==="rule_code"?"crit":"");}).catch(function(){});});
+loadDonut(f);
 A.call("api_dashboard.top_skus",{filters:f,limit:10}).then(function(r){var tb=$("dash-topsku");tb.innerHTML=r.rows.length?r.rows.map(function(x){return '<tr><td>'+A.esc(x.seller_sku)+'</td><td>'+A.esc(x.brand||"-")+'</td><td><b>'+x.n+'</b></td><td>'+A.esc(A.dt(x.latest))+'</td></tr>';}).join(""):'<tr><td colspan="4" class="al-empty">%(no_rows)s</td></tr>';}).catch(function(){});
 A.call("api_dashboard.aging",{filters:f}).then(function(b){bars($("dash-aging"),[{key:"< 4h",n:b.lt_4h||0},{key:"4-24h",n:b.h4_24||0},{key:"1-3 %(days)s",n:b.d1_3||0},{key:"> 3 %(days)s",n:b.gt_3d||0}],"warn");}).catch(function(){});
 A.call("api_dashboard.trend",{filters:f,days:14}).then(function(r){var max=1;r.rows.forEach(function(d){max=Math.max(max,d.new,d.resolved,d.ignored);});
@@ -776,6 +838,12 @@ $("f-preset").onchange=function(){syncPresetDates();S.start=0;reload();};
 $("al-adv-toggle").onclick=toggleAdv;
 $("al-kpis").addEventListener("click",function(ev){var c=ev.target.closest(".stat-card.kpi");if(c)applyKpi(c.getAttribute("data-kpi"));});
 $("al-kpis").addEventListener("keydown",function(ev){if(ev.key!=="Enter"&&ev.key!==" "&&ev.key!=="Spacebar")return;var c=ev.target.closest(".stat-card.kpi");if(c){ev.preventDefault();applyKpi(c.getAttribute("data-kpi"));}});
+function donutDelegate(ev){var t=ev.target.closest("[data-dim][data-filt]");if(t)donutClick(t);}
+function donutKey(ev){if(ev.key!=="Enter"&&ev.key!==" "&&ev.key!=="Spacebar")return;var t=ev.target.closest("[data-dim][data-filt]");if(t){ev.preventDefault();donutClick(t);}}
+$("ov-donut").addEventListener("click",donutDelegate);
+$("ov-donut").addEventListener("keydown",donutKey);
+$("ov-donut-legend").addEventListener("click",donutDelegate);
+$("ov-donut-legend").addEventListener("keydown",donutKey);
 $("al-refresh").onclick=reload;
 $("al-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);loadRows();};
 $("al-next").onclick=function(){S.start+=S.pageLen;loadRows();};
@@ -798,6 +866,9 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 })();
 </script>
 """ % dict(VNJ, days=js_escape("ngày"),
+    by_brand=js_escape("Theo brand"), by_platform=js_escape("Theo platform"),
+    by_rule=js_escape("Theo rule"), other_l=js_escape("Khác"),
+    none_l=js_escape("(không có)"), total_l=js_escape("Tổng alert"),
     c_open=js_escape("Đang mở"), c_setup=js_escape("Vấn đề cấu hình"),
     no_crit=js_escape("Không có cảnh báo nghiêm trọng đang mở."),
     kpi_l=js_escape("Thẻ KPI"), search_l=js_escape("Tìm SKU"),
@@ -869,7 +940,7 @@ PAGE2_CONTENT = """
 </div>
 <div class="al-overlay" id="al-overlay" hidden></div>
 <div class="al-drawer al-drawer-wide" id="pl-drawer" hidden>
-  <div class="al-drawer-head"><strong id="pl-d-title">Policy</strong><button class="al-btn" id="pl-d-close">&#10005;</button></div>
+  <div class="al-drawer-head"><strong id="pl-d-title">Policy</strong> <span id="pl-d-status"></span><button class="al-btn" id="pl-d-close">&#10005;</button></div>
   <div class="al-drawer-body">
     <div class="al-fsec">%(s_scope)s</div>
     <div class="al-fgrid">
@@ -918,9 +989,11 @@ PAGE2_CONTENT = """
   </div>
   <div class="al-drawer-actions">
     <button class="al-btn primary" id="pl-save">%(save)s</button>
-    <button class="al-btn" id="pl-st-active">&#8594; Active</button>
-    <button class="al-btn" id="pl-st-paused">&#8594; Paused</button>
-    <button class="al-btn" id="pl-st-draft">&#8594; Draft</button>
+    <button class="al-btn" id="pl-life" hidden></button>
+    <div class="al-more" id="pl-more-wrap" hidden>
+      <button class="al-btn" id="pl-more" aria-haspopup="true" aria-expanded="false">%(more_l)s</button>
+      <div class="al-more-menu" id="pl-more-menu" hidden><button class="al-btn" id="pl-st-draft">%(to_draft_l)s</button></div>
+    </div>
   </div>
 </div>
 <div class="al-modal wide" id="pl-csv-modal" hidden>
@@ -983,6 +1056,7 @@ PAGE2_CONTENT = """
     "effective": H("Hiệu lực"), "optional": H("tuỳ chọn"),
     "enable_lock": H("Tạo đề xuất Stock Safety Lock dry-run khi vi phạm nghiêm trọng"),
     "eff_from": H("Hiệu lực từ"), "eff_to": H("Đến"), "save": H("Lưu"),
+    "more_l": H("Thêm"), "to_draft_l": H("Chuyển về Draft"),
     "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Số tiền chấp nhận 5000000 / 5,000,000 / 5.000.000."),
     "preview": H("Kiểm tra (preview)"), "errors": H("Lỗi"),
     "errbox_ph": H("Lỗi sẽ hiện ở đây để copy..."),
@@ -1046,10 +1120,22 @@ return (S.caps&&S.caps[brand])||{can_manage:false,can_activate:false};}
 function loadCaps(){return A.call("api_policies.policy_caps",{}).then(function(r){
 S.capsAll=!!r.all_brands;S.caps=r.caps||{};
 $("pl-new").disabled=!(S.capsAll||Object.keys(S.caps).some(function(b){return S.caps[b].can_manage;}));}).catch(function(){});}
-function applyCaps(brand){var c=cap(brand);
-$("pl-save").disabled=!c.can_manage;$("pl-st-draft").disabled=!c.can_manage;
-$("pl-st-paused").disabled=!c.can_manage;$("pl-st-active").disabled=!c.can_activate;
-$("pl-st-active").title=c.can_activate?"":"%(no_activate)s";}
+// applyCaps now just refreshes the contextual footer (caps are read inside).
+function applyCaps(brand){refreshFooter();}
+// Contextual lifecycle footer: at most TWO visible lifecycle buttons, chosen by
+// the record's CURRENT status. No arrow glyphs. "Set to Draft" (a real backend
+// transition) lives under a small More menu for Active/Paused records only.
+function curStatus(){return (S.current&&S.current.status)||"Draft";}
+function refreshFooter(){var c=cap($("e-brand").value);var st=curStatus();
+var life=$("pl-life"),mw=$("pl-more-wrap");
+$("pl-save").disabled=!c.can_manage;
+$("pl-save").textContent=(!S.current||st==="Draft")?"%(save)s":"%(save_changes)s";
+$("pl-more-menu").hidden=true;if($("pl-more"))$("pl-more").setAttribute("aria-expanded","false");
+if(!S.current){life.hidden=true;mw.hidden=true;$("pl-st-draft").disabled=!c.can_manage;return;}
+if(st==="Active"){life.hidden=false;life.textContent="%(pause_l)s";life.setAttribute("data-to","Paused");life.disabled=!c.can_manage;mw.hidden=false;}
+else if(st==="Paused"){life.hidden=false;life.textContent="%(resume_l)s";life.setAttribute("data-to","Active");life.disabled=!c.can_activate;life.title=c.can_activate?"":"%(no_activate)s";mw.hidden=false;}
+else{life.hidden=false;life.textContent="%(activate_l)s";life.setAttribute("data-to","Active");life.disabled=!c.can_activate;life.title=c.can_activate?"":"%(no_activate)s";mw.hidden=true;}
+$("pl-st-draft").disabled=!c.can_manage;}
 // ----- per-brand missing-policy summary (unknown/not-loaded -> '-', confirmed 0 -> '0') -----
 function loadMissing(){var box=$("pl-missing-rows");
 A.call("api_policies.missing_policy_summary",{}).then(function(res){S.missingLoaded=true;var sum=res.summary||{};
@@ -1118,7 +1204,8 @@ $("pl-d-title").textContent=r?r.name:"New Policy";
 A.fillBrandSelect($("e-brand"),S.scope,{extra:(r&&r.brand)||null,value:(r&&r.brand)||null});
 FIELDS.forEach(function(k){var el=$("e-"+k);if(el)el.value=(r&&r[k]!=null)?r[k]:"";});
 $("e-enable_lock").checked=!!(r&&r.enable_stock_safety_lock);
-$("pl-status-line").innerHTML=r?("Status: "+A.polBadge(r.status)+(r.import_batch?(" &#183; batch "+A.esc(r.import_batch)):"")):"Status: "+A.polBadge("Draft");
+$("pl-d-status").innerHTML=A.polBadge(curStatus());
+$("pl-status-line").innerHTML=(r&&r.import_batch)?("batch "+A.esc(r.import_batch)):"";
 applyCaps($("e-brand").value);
 updateScopePreview();applyFieldHelp($("pl-drawer"));
 $("al-overlay").hidden=false;$("pl-drawer").hidden=false;}
@@ -1230,8 +1317,8 @@ $("pl-cov-go").onclick=loadCoverage;
 $("pl-cov-cancel").onclick=function(){$("pl-cov-modal").hidden=true;$("al-overlay").hidden=true;};
 $("pl-cov-export").onclick=exportCovTemplate;
 $("pl-save").onclick=save;
-$("pl-st-active").onclick=function(){setStatus("Active");};
-$("pl-st-paused").onclick=function(){setStatus("Paused");};
+$("pl-life").onclick=function(){setStatus($("pl-life").getAttribute("data-to"));};
+$("pl-more").onclick=function(){var m=$("pl-more-menu"),h=m.hidden;m.hidden=!h;$("pl-more").setAttribute("aria-expanded",h?"true":"false");};
 $("pl-st-draft").onclick=function(){setStatus("Draft");};
 $("pl-template").onclick=dlTemplate;
 $("pl-upload").onclick=openCsv;
@@ -1253,6 +1340,9 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 """ % dict(VNJ, errors_l=js_escape("lỗi"), created_l=js_escape("tạo mới"),
            updated_l=js_escape("cập nhật"),
+           save=js_escape("Lưu"), save_changes=js_escape("Lưu thay đổi"),
+           activate_l=js_escape("Kích hoạt"), pause_l=js_escape("Tạm dừng"),
+           resume_l=js_escape("Tiếp tục"),
            need_brand=js_escape("Chọn Brand trước."),
            ps_sku=js_escape("SKU-specific"), ps_shop=js_escape("Shop Policy"),
            ps_platform=js_escape("Platform Policy"), ps_brand=js_escape("Brand fallback"),
@@ -2077,7 +2167,7 @@ print("[OK] M2c policy-drawer asserts pass")
 
 p1 = open(os.path.join(OUTDIR, "alert_center.html")).read()
 assert "daysAgo(14)" in p1
-for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-aging",
+for el in ("dash-topsku", "dash-aging",
            "dash-trend", "al-rows", "al-subnav", "list_alerts", 'id="al-alert-list"',
            "applyHashNav", 'id="al-snapshot-note"',
            # G1.1 Drop 2: bulk + occurrence column + occurrences drawer
@@ -2091,8 +2181,16 @@ for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-agin
            # into one main trend card + Alert Distribution card + Operational/Setup
            # switch (the obsolete id="dash-hourly" assert is dropped; negative
            # assert below confirms its removal).
-           'id="ov-trend"', "al-dist3", 'id="al-modesw"', 'id="al-mode-setup"',
+           'id="ov-trend"', 'id="al-modesw"', 'id="al-mode-setup"',
            "al-top-row",
+           # RC polish 2026-06-15: concentric-donut distribution (replaces the
+           # 3 horizontal-bar columns / al-dist3). Outer=Brand, middle=Platform,
+           # inner=Rule, center=total; clickable + keyboard; legend with %/count.
+           # (segments + data-dim are built at runtime; the three ring defs and
+           # the donut helpers/containers are literal in the built page.)
+           'id="ov-donut"', 'id="ov-donut-legend"', "loadDonut", "renderDonut",
+           "donutClick", "donutArc", 'data-dim="', 'dim:"brand"',
+           'dim:"platform"', 'dim:"rule"', 'id="ov-donut-total"',
            # UX polish 2026-06-10: occ prominence + last_seen + dash for
            # no-price rules + exact SKU search + case pill
            "al-occ-n.multi", "occBadge", "NOPRICE", "pmoney(", "pgap(",
@@ -2154,6 +2252,17 @@ assert ("30" in polc and ("đơn" in polc or "ordered" in polc.lower())), \
     "Price Setup coverage must label its 30-day ordered-SKU basis"
 # the per-brand missing detail is kept but demoted to a drill-down (not dominant)
 assert 'id="pl-cov-bybrand"' in pol, "per-brand missing detail must remain as a drill-down"
+# RC polish 2026-06-15: contextual lifecycle footer + status badge near the title.
+for el in ('id="pl-d-status"', 'id="pl-life"', 'id="pl-more"', 'id="pl-st-draft"',
+           "refreshFooter", "curStatus", "set_policy_status", "function save()"):
+    assert el in pol, "page2 missing contextual-footer element " + el
+# the old simultaneous Active/Paused/Draft footer buttons are gone (max 2 lifecycle
+# buttons; Draft moved under a More menu), and no arrow glyphs remain on them.
+assert 'id="pl-st-active"' not in pol and 'id="pl-st-paused"' not in pol, \
+    "Price Setup must not show simultaneous Active/Paused status buttons"
+for arrow in ("&#8594; Active", "&#8594; Paused", "&#8594; Draft"):
+    assert arrow not in pol, "lifecycle buttons must not carry arrow glyphs: " + arrow
+print("[OK] M2d Price Setup contextual-footer asserts pass")
 
 p3 = open(os.path.join(OUTDIR, "alert_rules.html")).read()
 for el in ("ru-rows", "ru-overlap", "ru-tier-line", "al-banner",
