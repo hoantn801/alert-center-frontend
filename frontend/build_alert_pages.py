@@ -1870,9 +1870,12 @@ for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-agin
            # G1.1 Drop 2 polish: centered modal + CSV export
            "al-modal-xl", 'id="al-d-sub"', 'id="al-occ-export"',
            "exportOccCsv", "OCC_CSV_COLS",
-           # hourly trend chart (top-right)
-           'id="dash-hourly"', "api_dashboard.hourly_trend", "renderHourly",
-           "al-top-row", "al-hour-panel",
+           # UI/UX consolidation 2026-06-15: hourly panel REMOVED and consolidated
+           # into one main trend card + Alert Distribution card + Operational/Setup
+           # switch (the obsolete id="dash-hourly" assert is dropped; negative
+           # assert below confirms its removal).
+           'id="ov-trend"', "al-dist3", 'id="al-modesw"', 'id="al-mode-setup"',
+           "al-top-row",
            # UX polish 2026-06-10: occ prominence + last_seen + dash for
            # no-price rules + exact SKU search + case pill
            "al-occ-n.multi", "occBadge", "NOPRICE", "pmoney(", "pgap(",
@@ -1889,6 +1892,9 @@ for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-agin
            'id="ov-viewall"', "loadRecent", "loadFieldHelp", "FIELD_HELP"):
     assert el in p1, "page1 missing " + el
 assert 'id="al-alert-list" hidden' in p1, "Alerts work-queue must be a hidden subview (not on Overview)"
+# the standalone hourly panel was consolidated into the main trend card.
+assert 'id="dash-hourly"' not in p1, "obsolete standalone hourly panel must be removed"
+assert 'class="panel al-hour-panel"' not in p1, "obsolete al-hour-panel must be removed"
 # stale KPI label must be gone (missing_brand_mapping is NOT "missing policy")
 assert "al-c-missing" not in p1, "stale al-c-missing KPI id must be removed"
 assert 'placeholder="seller_sku"' not in p1, "old SKU placeholder must be replaced"
