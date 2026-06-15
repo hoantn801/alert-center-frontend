@@ -283,3 +283,235 @@ python -m py_compile frontend\build_alert_pages.py
 python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
 # DO NOT merge, DO NOT deploy.
 ```
+
+## 15. Release-candidate polish pass (2026-06-15) - final report
+
+This pass is the final polish + release-candidate validation. No backend schema,
+rule-evaluation, scope-priority, API, or permission change; DS1 gate stays closed;
+no real Omisell write / unlock / restore / reconciliation enabled. All edits are
+in the single builder `frontend/build_alert_pages.py`; generated HTML stays
+git-ignored. NOT merged, NOT deployed.
+
+### 15.1 Final page-by-page feature summary
+
+Overview (`/alerts`, `alert_center.html`): compact KPI strip with interactive
+drill-down, one consolidated trend card (`ov-trend`), Alert Distribution card,
+Recent Critical list, Overview/Alerts subview split via hash, Operational/Setup
+mode switch. The obsolete standalone hourly panel stays removed (negative assert).
+Rule filter options now show business labels (raw `rule_code` kept as the option
+value and in a tooltip).
+
+Alerts work queue (subview of `/alerts`): 14-column table, bulk actions,
+occurrence column + occurrences drawer with CSV export, sectioned detail drawer,
+business rule labels via `ruleCell`/`RULE_LABELS`.
+
+Price Setup (`/alerts/policies`, `alert_policies.html`): grouped policy drawer
+(Scope / Product / Prices / Alert Behavior + collapsed Advanced), live scope
+preview, EC Field Description help icons. NEW this pass: a compact coverage
+summary (Covered SKUs / Missing SKUs / Coverage %) consistent with the Overview
+KPI cards, basis labelled "distinct ordered SKUs, last 30 days", an info tooltip
+with the full definition, and a clickable Missing card that opens the existing
+missing-policy view. The per-brand missing chips remain as a collapsed drill-down
+(`pl-cov-bybrand`) so they no longer dominate the page.
+
+Rules (`/alerts/rules`, `alert_rules.html`): Brand Defaults grouped by brand +
+Advanced Exceptions (`<details>`). NEW this pass: the rule editor keeps Scope /
+Trigger / Action visible and moves effective dates, status line and the
+overlap-check tool into an Advanced `<details>` that is collapsed by default
+(`ru-adv-sec`, re-collapsed every time the drawer opens). Nine EC Field
+Description help icons (static fallback, live override when the doctype is
+present) for rule type, threshold, action, recommend Stock Safety, scope
+priority, Brand Default, Platform Override, Shop Override, SKU Exception. Rule
+dropdowns relabelled to business labels (values unchanged).
+
+Stock Safety (`/alerts/locks`, `alert_locks.html`): three internal tabs (Pending
+Actions / Action History / Automation Pauses) with hash state, compact clickable
+KPI strip, sectioned detail drawer. NEW this pass: truthful outcome labelling -
+every record reads as a simulation (see 15.5); the page never presents "Live".
+
+Integration Health (`/alerts/integration-health`, `alert_health.html`): friendly
+column headers, read-only diagnostics, no `set-config` write, no `pull_recent`
+trigger.
+
+### 15.2 Exact files changed
+
+This pass: `frontend/build_alert_pages.py` (builder) and this report
+`69_UI_UX_CONSOLIDATION_REPORT.md`. Nothing else. The five generated
+`frontend/alert_*.html` are build artifacts and remain git-ignored (not staged).
+No backend file under `ecentric_workspace/` was modified.
+
+### 15.3 Commit hashes in branch order
+
+Base / merge-base with `main`: `d603febcb47c`. Branch `feat/alert-ui-ux-consolidation`,
+oldest -> newest:
+
+1. `802c1a0` Alert UI: redesign overview and clarify operational pages
+2. `569bc70` Alert UI: align builder assertions with consolidated overview
+3. `7cf745f` Alert UI: reorder alerts queue and structure detail drawer
+4. `fb7ff32` Alert UI: simplify Price Setup policy workflow
+5. `cf928f4` Alert UI: simplify Rules defaults and exceptions
+6. `dfcd32e` Alert UI: restructure Stock Safety actions and pauses  (current HEAD)
+7. *(pending - this pass)* proposed `Alert UI: release-candidate polish (coverage, rules help, truthful stock labels)` - NOT yet committed; the sandbox cannot stage the large builder safely, so the owner commits it on Windows (see 15.8).
+
+### 15.4 Full validation output (real full assert set)
+
+Run against a faithful reconstruction of the builder (the sandbox file mount
+truncates the ~175 KB builder on read; the host file is complete - every edit was
+applied to the host and replayed deterministically via unique anchors, then the
+REAL assert block was executed):
+
+```
+py_compile OK
+[OK] built out/alert_center.html (94777 bytes)
+[OK] built out/alert_policies.html (96999 bytes)
+[OK] built out/alert_rules.html (80528 bytes)
+[OK] built out/alert_locks.html (76703 bytes)
+[OK] built out/alert_health.html (69680 bytes)
+[OK] M2c policy-drawer asserts pass
+[OK] M2/M2b dashboard asserts pass     (+ RULE_LABELS / ruleCell / relabelRuleOptions)
+[OK] M3 asserts pass                   (+ ru-adv-sec collapsed, >=9 rules.* help icons, tier legend)
+[OK] M4 asserts pass                   (+ ssStatusBadge/RV_LABEL/SS_LABEL, no >Live<, simulation labels)
+[OK] G1 integration-health asserts pass
+[OK] module-shell asserts pass         (no standalone Automation Pauses nav anchor)
+[OK] UI/UX consolidation nav + terminology asserts pass
+```
+
+Added assertions this pass: Price Setup coverage metrics (`pl-cov-kpis`,
+`pl-cov-covered/missing/pct`, `data-cov="missing"`, `loadCoverageSummary`,
+`data-help="price_setup.coverage"`, 30-day ordered-SKU basis text,
+`pl-cov-bybrand` drill-down); Rules Advanced collapsed-by-default + the nine
+help-icon topics + business-label markers; Stock Safety truthful-label helpers +
+negative `">Live<" not in p4`; Overview business-terminology markers; (kept)
+negative asserts for the stale hourly panel and the standalone Automation Pauses
+nav.
+
+Other checks: `node --check` OK on all five pages' inline JS; duplicate-id audit
+NONE on all five; dead-button audit NONE unbound (policies/rules/locks); delegated
+selector/action handlers verified (e.g. `data-cov="missing"`); table header/row
+alignment locks 12/12 and pauses 10/10; non-ASCII bytes 0 on all five; style/script
+tag balance OK; no merge-conflict markers; secret scan clean; all five
+`frontend/alert_*.html` confirmed git-ignored; `git status` shows only the builder
+and this report modified.
+
+### 15.5 Exact Stock Safety status mapping (truthfulness)
+
+Source of truth: `EC Alert Action` (`action_type = "Stock Safety Lock"`),
+`api_actions.list_actions` / `review_action`. `review_action` performs NO Omisell
+call (DS1 gate closed) - Approve only stamps the audit, Reject cancels.
+
+Tab derivation (frontend filter on the existing `review_status` field):
+
+| Tab | Filter applied | Records shown |
+|---|---|---|
+| Pending Actions | `review_status = "Pending Review"` | awaiting review |
+| Action History | review filter cleared | terminal: Approved / Rejected |
+| Automation Pauses | (separate `EC Automation Pause` list) | Scheduled/Active/Expired/Cancelled |
+
+Lifecycle (DS1-disabled, current):
+
+| Event | `status` | `review_status` |
+|---|---|---|
+| Created | Dry Run / Pending / Skipped | Pending Review |
+| Approve | unchanged (stays Dry Run) - NO Omisell write | Approved |
+| Reject (note required) | Cancelled | Rejected |
+
+Truthful visible labels (raw enum kept in the `title` tooltip):
+
+| Raw `review_status` | Shown as |
+|---|---|
+| Pending Review | "Cho duyet" (Pending review) |
+| Approved | "Duyet cho mo phong" (Approved for simulation) |
+| Rejected | "Tu choi" (Rejected) |
+
+| Raw `status` | Shown as (outcome) |
+|---|---|
+| Dry Run | "Mo phong" (Simulation) |
+| Success | "Mo phong hoan tat" (Simulation completed) |
+| Pending | "Cho xu ly" (Pending) |
+| Processing | "Dang xu ly" (Processing) |
+| Skipped | "Bo qua" (Skipped) |
+| Failed | "Loi (mo phong)" (Failed - simulation) |
+| Cancelled | "Da huy" (Cancelled) |
+
+"Live" is never shown. It is reserved for a future real executor and only when
+backend data explicitly proves a live write occurred - no such field/proof exists
+today, so every current record reads as Simulation. A negative assert
+(`">Live<" not in p4`) guards this.
+
+### 15.6 Genuine remaining limitations
+
+- The Price Setup coverage summary is an aggregate across the user's scoped
+  brands computed by calling the canonical per-brand `coverage_report`
+  (`api_sku_catalog.policy_missing_skus`) once per brand in parallel. For a
+  global supervisor with many brands this is N small reads on page load. It is
+  correct and uses no new backend, but a single aggregate endpoint would be more
+  efficient if brand counts grow large.
+- Coverage % shows `n/a` when a brand has no orders in the 30-day window (no
+  fabricated denominator). This is intentional but can read as "missing data" to
+  a first-time user; the info tooltip explains it.
+- EC Field Description help text is dynamic only if the (DB-only) doctype is
+  present and readable; otherwise the static fallback copy is shown. This is by
+  design but means help text can differ between environments.
+- Main data tables scroll horizontally inside their wrapper but do not have a
+  sticky header (only the occurrences table does); adding sticky headers would
+  need a max-height scroll container and was judged out of scope for a low-risk
+  polish pass.
+- Validation is run against a reconstruction because the sandbox mount truncates
+  the builder; the owner's Windows build remains authoritative.
+
+### 15.7 Local preview (owner, Windows - artifacts are git-ignored)
+
+```powershell
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+# open the generated files in a browser to eyeball at 1366px and 1920px:
+start frontend\alert_policies.html
+start frontend\alert_rules.html
+start frontend\alert_locks.html
+# (live data requires the pages served by Frappe on the bench site)
+```
+
+### 15.8 Proposed commit + push (owner runs on Windows; do NOT merge/deploy)
+
+```powershell
+cd C:\dev\ALERT_CENTER
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git status   # confirm NO generated frontend\*.html staged, no secrets
+git commit -m "Alert UI: release-candidate polish (coverage, rules help, truthful stock labels)"
+git push
+```
+
+### 15.9 Proposed deploy (LATER, only after explicit approval - not now)
+
+```powershell
+# On the bench host, after PR review + approval (NOT part of this pass):
+cd C:\dev\ALERT_CENTER
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+# then publish the 5 Web Pages via the project's existing deploy script:
+#   deploy\deploy_alert_center.ps1   (or the documented Web Page import step)
+# verify:  deploy\verify_alert_center_postdeploy.ps1
+```
+
+### 15.10 Rollback
+
+```powershell
+# Source rollback (un-commit this pass, keep history):
+cd C:\dev\ALERT_CENTER
+git revert <new-commit-hash>            # creates an inverse commit
+# or hard reset the branch to the prior HEAD if not yet pushed/shared:
+git reset --hard dfcd32e
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+# Deployed-page rollback (only if ever deployed): restore the previous Web Page
+# HTML from deploy\backups\ per RUNBOOK_ALERT_CENTER.md.
+```
+
+### 15.11 Status
+
+- committed: NO (this pass is staged in the working tree only; commands in 15.8)
+- pushed: NO
+- merged: NO
+- deployed: NO
+
+Prior passes (commits 1-6 in 15.3) are committed and pushed on the branch; they
+are NOT merged and NOT deployed.

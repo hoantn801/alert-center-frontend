@@ -333,6 +333,9 @@ SHARED_CSS = """
 .ecentric-app .al-help-i{display:inline-flex;cursor:help;color:var(--gray-400);font-size:13px;margin-left:4px;vertical-align:middle}
 .ecentric-app .al-help-i:hover{color:var(--navy)}
 .ecentric-app .al-help-i:focus-visible{outline:2px solid var(--navy);outline-offset:1px;border-radius:3px}
+.ecentric-app .al-tierleg{display:inline-flex;align-items:center;gap:2px;cursor:help;font-size:12.5px;color:var(--gray-600)}
+.ecentric-app .al-tierleg:hover{color:var(--navy)}
+.ecentric-app .al-tierleg:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:4px}
 .ecentric-app .ru-brand{margin-bottom:14px;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden}
 .ecentric-app .ru-brand-h{font-size:13px;font-weight:700;color:var(--gray-900);padding:8px 14px;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
 .ecentric-app .al-adv-sec{margin-top:14px;border-top:1px solid var(--gray-200);padding-top:6px}
@@ -421,7 +424,11 @@ function fieldHelp(key){return FIELD_HELP[key]||null;}
 function loadFieldHelp(){return fetch("/api/method/frappe.client.get_list?doctype=EC%%20Field%%20Description&fields=[%%22name%%22,%%22label%%22,%%22description%%22]&limit_page_length=0",{credentials:"include",headers:{Accept:"application/json"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){var rows=(j&&j.message)||[];rows.forEach(function(x){if(x&&x.name)FIELD_HELP[x.name]={label:x.label||"",help:x.description||""};});}).catch(function(){});}
 function ruleLabel(c){var h=FIELD_HELP["alert.rule."+c];return (h&&h.label)||RULE_LABELS[c]||c||"-";}
 function ruleCell(c){if(!c)return "-";var l=ruleLabel(c);if(l===c)return esc(c);return '<span title="'+esc(c)+'">'+esc(l)+'</span>';}
-return {call:call,$:$,esc:esc,money:money,dt:dt,toast:toast,sevBadge:sevBadge,stBadge:stBadge,actBadge:actBadge,polBadge:polBadge,initScope:initScope,daysAgo:daysAgo,dateStr:dateStr,fillBrandSelect:fillBrandSelect,stHealth:stHealth,ruleLabel:ruleLabel,ruleCell:ruleCell,fieldHelp:fieldHelp,loadFieldHelp:loadFieldHelp};
+// Relabel a <select> of raw rule_code options to business labels in place. The
+// option VALUE stays the raw code (backend filter unchanged); only the visible
+// text becomes the business label, with the raw code kept in a title tooltip.
+function relabelRuleOptions(sel){if(!sel)return;Array.prototype.forEach.call(sel.options,function(o){if(!o.value)return;var l=ruleLabel(o.value);if(l&&l!==o.value){o.textContent=l;o.title=o.value;}});}
+return {call:call,$:$,esc:esc,money:money,dt:dt,toast:toast,sevBadge:sevBadge,stBadge:stBadge,actBadge:actBadge,polBadge:polBadge,initScope:initScope,daysAgo:daysAgo,dateStr:dateStr,fillBrandSelect:fillBrandSelect,stHealth:stHealth,ruleLabel:ruleLabel,ruleCell:ruleCell,relabelRuleOptions:relabelRuleOptions,fieldHelp:fieldHelp,loadFieldHelp:loadFieldHelp};
 })();
 </script>
 """ % dict(VNJ, rule_labels=_RULE_LABELS_JS)
@@ -755,6 +762,7 @@ function init(){setDefaultRange();
 A.initScope("/alerts",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
 var bsel=$("f-brand");Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
+A.relabelRuleOptions($("f-rule_code"));
 syncKpiActive();renderChips();
 reload();
 applyHashNav();});
@@ -821,9 +829,17 @@ PAGE2_CONTENT = """
     <div class="content">
       <div class="greeting"><h1>%(title)s</h1><p id="al-scope-line"></p></div>
       <div class="panel" id="pl-missing-panel">
-        <div class="panel-header"><div class="panel-title">%(missing_sum_title)s</div>
-          <span style="font-size:12px;color:var(--gray-500)">%(missing_sum_hint)s</span></div>
-        <div id="pl-missing-rows" class="al-inline" style="flex-wrap:wrap;gap:10px;padding:6px 2px"><span class="al-empty">-</span></div>
+        <div class="panel-header"><div class="panel-title">%(cov_sum_title)s<span class="al-help-i" data-help="price_setup.coverage" title="%(cov_help)s" tabindex="0" role="img" aria-label="%(cov_help)s">&#9432;</span></div>
+          <span style="font-size:12px;color:var(--gray-500)">%(cov_basis)s</span></div>
+        <div class="stats-strip" id="pl-cov-kpis">
+          <div class="stat-card s-green"><div class="stat-label">%(cov_covered)s</div><div class="stat-value" id="pl-cov-covered">-</div><div class="stat-meta">%(cov_covered_meta)s</div></div>
+          <div class="stat-card s-yellow kpi" id="pl-cov-missing-card" data-cov="missing" role="button" tabindex="0" title="%(cov_missing_hint)s"><div class="stat-label">%(cov_missing)s</div><div class="stat-value" id="pl-cov-missing">-</div><div class="stat-meta">%(cov_missing_meta)s</div></div>
+          <div class="stat-card s-navy"><div class="stat-label">%(cov_pct)s</div><div class="stat-value" id="pl-cov-pct">-</div><div class="stat-meta">%(cov_basis)s</div></div>
+        </div>
+        <details class="al-adv-sec" id="pl-cov-bybrand" style="margin-top:10px">
+          <summary class="al-fsec" style="cursor:pointer">%(cov_bybrand)s</summary>
+          <div id="pl-missing-rows" class="al-inline" style="flex-wrap:wrap;gap:10px;padding:6px 2px"><span class="al-empty">-</span></div>
+        </details>
       </div>
       <div class="panel">
         <div class="panel-header"><div class="panel-title">%(title)s</div>
@@ -978,6 +994,17 @@ PAGE2_CONTENT = """
     "select_all": H("Chọn/bỏ tất cả dòng hợp lệ"), "action_l": H("Hành động"),
     "missing_sum_title": H("Thiếu Price Policy theo brand (theo đơn 30 ngày)"),
     "missing_sum_hint": H("Số SKU distinct chưa có Price Policy active, tính theo đơn hàng 30 ngày gần nhất. Bấm để xem SKU thiếu policy."),
+    # Coverage summary (compact KPIs). Basis = distinct seller_sku that appear in
+    # orders within the last 30 days, per brand in scope (canonical coverage
+    # service - same numbers as the per-brand chips and the modal).
+    "cov_sum_title": H("Độ phủ Price Policy"),
+    "cov_help": H("Covered = SKU đã có Price Policy active in-effect. Missing = SKU chưa có. Coverage % = Covered / tổng SKU distinct có đơn trong 30 ngày gần nhất. Cơ sở tính theo từng (brand, seller_sku) trong phạm vi của bạn; KHÔNG bịa mẫu số - nếu không có đơn nào thì hiển thị n/a."),
+    "cov_basis": H("Cơ sở: SKU distinct có đơn trong 30 ngày gần nhất"),
+    "cov_covered": H("Covered SKUs"), "cov_covered_meta": H("đã có Price Policy active"),
+    "cov_missing": H("Missing SKUs"), "cov_missing_meta": H("bấm để xem SKU thiếu policy"),
+    "cov_missing_hint": H("Mở danh sách SKU thiếu Price Policy (theo brand)"),
+    "cov_pct": H("Coverage %"),
+    "cov_bybrand": H("Chi tiết thiếu policy theo brand"),
     # drawer sections + helpers (UX hotfix 2)
     "s_scope": H("1. Phạm vi áp dụng"),
     "h_all_fallback": H("Platform=All thường nên để Shop trống. Policy theo platform/shop cụ thể sẽ OVERRIDE policy All. Hệ thống chặn 2 Active policy trùng y hệt scope."),
@@ -1031,6 +1058,26 @@ if(!brands.length){box.innerHTML='<span class="al-empty">-</span>';return;}
 box.innerHTML=brands.sort().map(function(b){var n=(b in sum)?sum[b]:0;
 return '<button class="al-chip '+(n>0?"warn":"ok")+'" data-mbrand="'+A.esc(b)+'" title="%(chip_title)s"><span>'+A.esc(b)+'</span><span class="al-chip-n">'+n+'</span></button>';}).join("");
 }).catch(function(){box.innerHTML='<span class="al-empty">-</span>';});}
+// ----- compact coverage summary (Covered / Missing / Coverage pct) -----
+// Aggregates the CANONICAL per-brand coverage_report across the user's scoped
+// brands (one existing endpoint, no backend change). missing_count and checked
+// are FULL distinct counts regardless of the list limit, so limit:1 keeps the
+// payload tiny while the numbers stay exact. Denominator = total distinct
+// ordered seller_sku in the 30d window; if there are NO orders, pct shows n/a
+// (never a fabricated denominator).
+function loadCoverageSummary(){
+var brands=Object.keys((S.scope&&S.scope.brands)||{});S.covBrands=brands;
+var cov=$("pl-cov-covered"),mis=$("pl-cov-missing"),pct=$("pl-cov-pct");
+if(!brands.length){cov.textContent="0";mis.textContent="0";pct.textContent="n/a";return;}
+cov.textContent=mis.textContent=pct.textContent="\\u2026";
+Promise.all(brands.map(function(b){return A.call("api_sku_catalog.policy_missing_skus",{brand:b,days:30,limit:1}).then(function(r){return {checked:+r.checked||0,missing:+r.missing_count||0};}).catch(function(){return {checked:0,missing:0};});})).then(function(res){
+var tc=0,tm=0;res.forEach(function(x){tc+=x.checked;tm+=x.missing;});
+var covered=Math.max(0,tc-tm);
+cov.textContent=covered;mis.textContent=tm;
+pct.textContent=tc?(Math.round(1000*(tc-tm)/tc)/10+"%%"):"n/a";});}
+function openMissingView(){var brands=S.covBrands||[];
+if(brands.length===1){openCoverageFor(brands[0]);return;}
+var d=$("pl-cov-bybrand");if(d){d.open=true;if(!S.missingLoaded)loadMissing();d.scrollIntoView({behavior:"smooth",block:"nearest"});}}
 // ----- bulk import workbench helpers -----
 function actChip(a,detail){var col={Create:"#16a34a",Update:"#2563eb",Skip:"#6b7280",Conflict:"#d97706",Invalid:"#dc2626"}[a]||"#6b7280";
 var t=(a==="Update"&&detail)?(" \\u2192 "+A.esc(detail)):((a==="Conflict"&&detail)?(" ("+A.esc(detail)+")"):"");
@@ -1090,10 +1137,10 @@ function closeDrawer(){$("al-overlay").hidden=true;$("pl-drawer").hidden=true;}
 function save(){var data={brand:$("e-brand").value};
 FIELDS.forEach(function(k){var v=$("e-"+k).value;if(v!=="")data[k]=v;});
 data.enable_stock_safety_lock=$("e-enable_lock").checked?1:0;
-A.call("api_policies.save_policy",{policy:data,name:S.current?S.current.name:null}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+A.call("api_policies.save_policy",{policy:data,name:S.current?S.current.name:null}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();loadCoverageSummary();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function setStatus(st){if(!S.current){A.toast("Save first");return;}
 if(st==="Active"){var miss=[];["min_price","high_alert_percent","severe_drop_percent"].forEach(function(k){if(!$("e-"+k).value)miss.push(k);});if(miss.length){A.toast("%(warn_active)s"+miss.join(", "));}}
-A.call("api_policies.set_policy_status",{name:S.current.name,status:st}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+A.call("api_policies.set_policy_status",{name:S.current.name,status:st}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();loadCoverageSummary();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function dlTemplate(){A.call("api_policies.csv_template").then(function(t){
 var a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(t.content);a.download=t.filename;document.body.appendChild(a);a.click();a.remove();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function openCsv(){$("csv-file").value="";$("csv-paste").value="";$("csv-rows").innerHTML="";$("csv-stats").textContent="";$("csv-summary").textContent="";$("csv-errbox").value="";$("csv-result").innerHTML="";$("csv-import").disabled=true;S.prev=null;S.prevContent=null;
@@ -1164,7 +1211,9 @@ var blob=new Blob(["\\ufeff"+lines.join("\\n")],{type:"text/csv;charset=utf-8;"}
 function init(){A.initScope("/alerts/policies",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
 var bsel=$("f-brand");Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
-load();loadCaps();loadMissing();});
+load();loadCaps();loadMissing();loadCoverageSummary();applyFieldHelp($("pl-missing-panel"));});
+$("pl-cov-kpis").addEventListener("click",function(ev){if(ev.target.closest('[data-cov="missing"]'))openMissingView();});
+$("pl-cov-kpis").addEventListener("keydown",function(ev){if((ev.key==="Enter"||ev.key===" ")&&ev.target.closest('[data-cov="missing"]')){ev.preventDefault();openMissingView();}});
 $("pl-apply").onclick=function(){S.start=0;load();};
 $("pl-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);load();};
 $("pl-next").onclick=function(){S.start+=S.pageLen;load();};
@@ -1235,7 +1284,13 @@ PAGE3_CONTENT = """
     <div class="content">
       <div class="greeting"><h1>%(title)s</h1><p id="al-scope-line"></p></div>
       <div class="al-note"><span class="al-note-ic">&#9432;</span><span>%(intro_copy)s</span></div>
-      <div class="al-help" style="margin:-6px 0 12px"><b>%(prio_chain)s</b></div>
+      <div class="al-help" style="margin:-6px 0 12px"><b>%(prio_chain)s</b><span class="al-help-i" data-help="rules.scope_priority" title="%(h_scope_priority)s" tabindex="0" role="img" aria-label="%(h_scope_priority)s">&#9432;</span>
+        <div id="ru-tier-legend" style="margin-top:5px;display:flex;flex-wrap:wrap;gap:14px;font-weight:600">
+          <span class="al-tierleg" data-help="rules.sku_exception" title="%(h_sku_exception)s" tabindex="0" role="img" aria-label="%(h_sku_exception)s">SKU Exception <span class="al-help-i">&#9432;</span></span>
+          <span class="al-tierleg" data-help="rules.shop_override" title="%(h_shop_override)s" tabindex="0" role="img" aria-label="%(h_shop_override)s">Shop Override <span class="al-help-i">&#9432;</span></span>
+          <span class="al-tierleg" data-help="rules.platform_override" title="%(h_platform_override)s" tabindex="0" role="img" aria-label="%(h_platform_override)s">Platform Override <span class="al-help-i">&#9432;</span></span>
+          <span class="al-tierleg" data-help="rules.brand_default" title="%(h_brand_default)s" tabindex="0" role="img" aria-label="%(h_brand_default)s">Brand Default <span class="al-help-i">&#9432;</span></span>
+        </div></div>
       <div class="al-banner">%(banner)s</div>
       <div class="panel">
         <div class="panel-header"><div class="panel-title">%(s_defaults)s &#183; %(prio_label)s: <b>SKU &gt; Shop &gt; Platform &gt; Brand</b></div>
@@ -1277,13 +1332,13 @@ PAGE3_CONTENT = """
     </div>
     <div id="ru-tier-line" style="font-size:12px;margin:6px 0 2px;color:var(--gray-600)"></div>
 
-    <div class="al-fsec">%(rs_rule)s</div>
+    <div class="al-fsec">%(rs_rule)s<span class="al-help-i" data-help="rules.rule_type" title="%(h_rule_type)s" tabindex="0" role="img" aria-label="%(h_rule_type)s">&#9432;</span></div>
     <div class="al-fgrid">
       <div class="al-fld"><label>Rule <span class="al-req">*</span></label><select id="r-rule_code"><option>below_min</option><option>above_high</option><option>severe_price_drop</option><option>possible_missing_zero</option></select></div>
       <div class="al-fld"><label>Severity override</label><select id="r-severity_override"><option value="">%(keep_default)s</option><option>Critical</option><option>Warning</option><option>Info</option></select></div>
     </div>
 
-    <div class="al-fsec">%(rs_thresh)s</div>
+    <div class="al-fsec">%(rs_thresh)s<span class="al-help-i" data-help="rules.threshold" title="%(h_threshold)s" tabindex="0" role="img" aria-label="%(h_threshold)s">&#9432;</span></div>
     <div class="al-fgrid">
       <div class="al-fld"><label>Severe drop %%</label><input id="r-severe_drop_percent" type="number" placeholder="70"><div class="al-help">%(rh_severe)s</div></div>
       <div class="al-fld"><label>High alert %%</label><input id="r-high_alert_percent" type="number"><div class="al-help">%(rh_high)s</div></div>
@@ -1291,17 +1346,20 @@ PAGE3_CONTENT = """
     </div>
     <div class="al-note"><span class="al-note-ic">&#9432;</span><span>%(rh_own)s</span></div>
 
-    <div class="al-fsec">%(rs_lock)s</div>
-    <div class="al-lockbox"><label class="al-check"><input id="r-recommend_lock" type="checkbox"> %(rec_lock_label)s</label><div class="al-help" id="ru-lock-hint">%(lock_hint)s</div></div>
-
-    <div class="al-fsec">%(rs_eff)s</div>
-    <div class="al-fgrid">
-      <div class="al-fld"><label>%(eff_from)s</label><input id="r-effective_from" type="date"></div>
-      <div class="al-fld"><label>%(eff_to)s</label><input id="r-effective_to" type="date"></div>
-    </div>
+    <div class="al-fsec">%(rs_lock)s<span class="al-help-i" data-help="rules.action" title="%(h_action)s" tabindex="0" role="img" aria-label="%(h_action)s">&#9432;</span></div>
+    <div class="al-lockbox"><label class="al-check"><input id="r-recommend_lock" type="checkbox"> %(rec_lock_label)s<span class="al-help-i" data-help="rules.recommend_stock_safety" title="%(h_recommend_ss)s" tabindex="0" role="img" aria-label="%(h_recommend_ss)s">&#9432;</span></label><div class="al-help" id="ru-lock-hint">%(lock_hint)s</div></div>
     <div id="ru-status-line" style="margin:8px 0;font-size:13px"></div>
-    <button class="al-btn" id="ru-overlap">%(check_overlap)s</button>
-    <div id="ru-overlap-out" class="al-actrows" style="display:none"></div>
+
+    <details class="al-adv-sec" id="ru-adv-sec">
+      <summary class="al-fsec" style="cursor:pointer;list-style:revert">%(rs_advanced)s</summary>
+      <div class="al-fsec">%(rs_eff)s</div>
+      <div class="al-fgrid">
+        <div class="al-fld"><label>%(eff_from)s</label><input id="r-effective_from" type="date"></div>
+        <div class="al-fld"><label>%(eff_to)s</label><input id="r-effective_to" type="date"></div>
+      </div>
+      <button class="al-btn" id="ru-overlap">%(check_overlap)s</button>
+      <div id="ru-overlap-out" class="al-actrows" style="display:none"></div>
+    </details>
   </div>
   <div class="al-drawer-actions">
     <button class="al-btn primary" id="ru-save">%(save_draft)s</button>
@@ -1329,6 +1387,18 @@ PAGE3_CONTENT = """
     "rs_scope": H("1. Phạm vi áp dụng"), "rs_rule": H("2. Rule & mức độ"),
     "rs_thresh": H("3. Ngưỡng (Rules sở hữu)"), "rs_lock": H("4. Dry-run lock"),
     "rs_eff": H("5. Hiệu lực & trạng thái"),
+    "rs_advanced": H("Nâng cao (hiệu lực, trạng thái, công cụ)"),
+    # EC Field Description help-icon static fallbacks (overridden live by the
+    # EC Field Description adapter when present; these are the offline copy).
+    "h_rule_type": H("Loại rule quyết định engine đánh giá điều kiện giá nào: below_min (dưới giá sàn), above_high (cao bất thường), severe_price_drop (rớt giá sâu), possible_missing_zero (nghi giá 0/thiếu)."),
+    "h_threshold": H("Ngưỡng % do Rules sở hữu. severe drop = % rớt so với baseline; high alert = % cao so với reference. Để trống = fallback Price Policy rồi mặc định hệ thống."),
+    "h_action": H("Hành động của rule: chỉ tạo Alert, hoặc kèm đề xuất Stock Safety Lock dạng DRY-RUN (mô phỏng). Không có thao tác khoá kho thật — DS1 đang khoá."),
+    "h_recommend_ss": H("Khi bật, vi phạm nghiêm trọng sẽ tạo một đề xuất Stock Safety Lock để KAM/Lead review. Đây là MÔ PHỎNG, không gửi lệnh sang Omisell."),
+    "h_scope_priority": H("Khi nhiều rule cùng khớp, engine chọn rule cụ thể nhất theo thứ tự: SKU Exception > Shop Override > Platform Override > Brand Default."),
+    "h_brand_default": H("Brand Default: rule áp cho toàn brand (không chỉ định Platform/Shop/SKU). Là tầng nền, bị override bởi các tầng cụ thể hơn."),
+    "h_platform_override": H("Platform Override: rule chỉ định Platform (vd Shopee) — override Brand Default cho platform đó."),
+    "h_shop_override": H("Shop Override: rule chỉ định Shop — override Brand Default và Platform Override cho shop đó."),
+    "h_sku_exception": H("SKU Exception: rule chỉ định Seller SKU / Item — tầng ưu tiên cao nhất, override mọi tầng còn lại."),
     "rh_scope": H("Ưu tiên scope khi engine chọn rule: SKU > Shop > Platform > Brand. Để trống = áp cho cả brand."),
     "rh_own": H("Rules sở hữu các ngưỡng này. Price Policy chỉ giữ dữ liệu giá gốc (Min/Reference/RSP/lock). Để trống = fallback Policy (cũ) rồi mặc định hệ thống."),
     "rh_severe": H("severe_price_drop: cảnh báo khi giá rơi SÂU HƠN % này so với baseline. Trống = fallback Policy rồi mặc định 70%."),
@@ -1382,8 +1452,12 @@ function refreshTier(){var o={platform:$("r-platform").value,shop:$("r-shop").va
 $("ru-tier-line").innerHTML="%(tier_label)s: "+tierBadge(tierOf(o))+" &#183; SKU &gt; Shop &gt; Platform &gt; Brand";}
 function refreshLockBox(){var rc=$("r-rule_code").value;var ok=(rc==="severe_price_drop"||rc==="possible_missing_zero");
 $("r-recommend_lock").disabled=!ok;if(!ok)$("r-recommend_lock").checked=false;}
+// EC Field Description adapter: override the static title/aria-label fallbacks
+// with the live description when the doctype is present (loaded by initScope).
+function applyFieldHelp(root){var els=(root||document).querySelectorAll("[data-help]");Array.prototype.forEach.call(els,function(el){var h=A.fieldHelp(el.getAttribute("data-help"));if(h&&h.help){el.title=h.help;el.setAttribute("aria-label",h.help);}});}
 function openDrawer(r){S.current=r||null;
 $("ru-d-title").textContent=r?r.name:"New Rule";
+var adv=$("ru-adv-sec");if(adv)adv.open=false;
 var bsel=$("r-brand");bsel.innerHTML="";Object.keys((S.scope&&S.scope.brands)||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
 if(S.scope&&S.scope.supervisor&&r&&r.brand){var o2=document.createElement("option");o2.value=r.brand;o2.textContent=r.brand;bsel.appendChild(o2);}
 if(r)bsel.value=r.brand;
@@ -1392,7 +1466,7 @@ $("r-recommend_lock").checked=!!(r&&r.recommend_stock_lock);
 $("ru-status-line").innerHTML=(r?("Status: "+ruBadge(r.status)+(r.approved_by?(" &#183; %(approved_l)s "+A.esc(r.approved_by)):"")):"Status: "+ruBadge("Draft"))+
 (canActivate()?"":" &#183; %(need_lead)s");
 $("ru-overlap-out").style.display="none";
-refreshTier();refreshLockBox();
+refreshTier();refreshLockBox();applyFieldHelp($("ru-drawer"));
 $("al-overlay").hidden=false;$("ru-drawer").hidden=false;}
 function closeDrawer(){$("al-overlay").hidden=true;$("ru-drawer").hidden=true;}
 function collect(){var data={brand:$("r-brand").value,recommend_stock_lock:$("r-recommend_lock").checked?1:0};
@@ -1409,7 +1483,8 @@ return A.esc(o.name)+" ("+tierBadge(o.tier)+") &#8212; "+rel;}).join("<br>");}).
 function init(){A.initScope("/alerts/rules",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
 var bsel=$("f-brand");Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
-load();});
+A.relabelRuleOptions($("f-rule_code"));A.relabelRuleOptions($("r-rule_code"));
+load();applyFieldHelp($("ru-tier-legend"));});
 $("ru-apply").onclick=load;
 $("ru-rows").addEventListener("click",function(ev){var tr=ev.target.closest("tr[data-rn]");if(tr){var r=findRule(tr.getAttribute("data-rn"));if(r)openDrawer(r);}});
 $("ru-defaults").addEventListener("click",function(ev){
@@ -1476,13 +1551,13 @@ PAGE4_CONTENT = """
         <div class="al-filters">
           <div><label>Brand</label><select id="f-brand"><option value="">%(all)s</option></select></div>
           <div><label>Review</label><select id="f-review_status"><option value="">%(all)s</option><option>Pending Review</option><option>Approved</option><option>Rejected</option></select></div>
-          <div><label>Status</label><select id="f-status"><option value="">%(all)s</option><option>Pending</option><option>Dry Run</option><option>Skipped</option><option>Cancelled</option></select></div>
+          <div><label>%(h_outcome)s</label><select id="f-status"><option value="">%(all)s</option><option value="Pending">%(ss_pending)s</option><option value="Dry Run">%(ss_sim)s</option><option value="Skipped">%(ss_skipped)s</option><option value="Cancelled">%(ss_cancelled)s</option></select></div>
           <div><label>SKU</label><input id="f-sku" type="text"></div>
           <button class="al-btn primary" id="lk-apply">%(apply)s</button>
         </div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
-            <thead><tr><th>Action</th><th>Alert</th><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(qty)s</th><th>Lock until</th><th>%(release)s</th><th>Review</th><th>%(reviewed)s</th><th>Status</th></tr></thead>
+            <thead><tr><th>Action</th><th>Alert</th><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(qty)s</th><th>Lock until</th><th>%(release)s</th><th>Review</th><th>%(reviewed)s</th><th>%(h_outcome)s</th></tr></thead>
             <tbody id="lk-rows"></tbody>
           </table>
         </div>
@@ -1550,6 +1625,9 @@ PAGE4_CONTENT = """
     "queue_title": H("Hàng đợi review (dry-run)"), "refresh": H("Làm mới"),
     "tab_pending": H("Pending Actions"), "tab_history": H("Action History"),
     "tab_pauses": H("Automation Pauses"),
+    "h_outcome": H("Kết quả mô phỏng"),
+    "ss_pending": H("Chờ xử lý"), "ss_sim": H("Mô phỏng"),
+    "ss_skipped": H("Bỏ qua"), "ss_cancelled": H("Đã huỷ"),
     "all": H("Tất cả"), "apply": H("Lọc"), "qty": H("SL đề xuất"),
     "release": H("Release"), "reviewed": H("Duyệt bởi / lúc"),
     "pause_title": H("Tạm dừng tự động (Automation Pause)"),
@@ -1575,7 +1653,17 @@ var A=window.AL,$=A.$;
 var S={start:0,pageLen:50,total:0,scope:null,rows:[],pauses:[],current:null};
 var DS1="&#8212;(DS1)";
 function ds1(v){return (v==null||v===""||v===0)?DS1:A.esc(A.money(v));}
-function rvBadge(v){return v?('<span class="al-badge '+({"Pending Review":"al-b-pending","Approved":"al-b-active","Rejected":"al-b-critical"}[v]||"al-b-info")+'">'+A.esc(v)+'</span>'):"-";}
+// Truthful review labels: review_action performs NO Omisell write (DS1 gate
+// closed), so an "Approved" record is approved FOR SIMULATION only - never a
+// live inventory lock. Raw enum kept in the title tooltip.
+var RV_LABEL={"Pending Review":"%(rv_pending)s","Approved":"%(rv_approved)s","Rejected":"%(rv_rejected)s"};
+function rvBadge(v){return v?('<span class="al-badge '+({"Pending Review":"al-b-pending","Approved":"al-b-active","Rejected":"al-b-critical"}[v]||"al-b-info")+'" title="'+A.esc(v)+'">'+A.esc(RV_LABEL[v]||v)+'</span>'):"-";}
+// Truthful outcome labels for the action's processing status. DS1 is closed and
+// no executor is wired to this UI, so every state here is a SIMULATION. "Live"
+// is reserved for a future real executor and only when backend proof exists
+// (no such proof today) - current DS1-disabled records always read Simulation.
+var SS_LABEL={"Dry Run":"%(ss_sim)s","Success":"%(ss_simdone)s","Pending":"%(ss_pending)s","Processing":"%(ss_processing)s","Skipped":"%(ss_skipped)s","Failed":"%(ss_failed)s","Cancelled":"%(ss_cancelled)s"};
+function ssStatusBadge(r){var s=r.status;var cls={"Dry Run":"al-b-dryrun","Pending":"al-b-pending","Skipped":"al-b-skipped","Success":"al-b-resolved","Failed":"al-b-critical","Cancelled":"al-b-ignored","Processing":"al-b-pending"}[s]||"al-b-info";return '<span class="al-badge '+cls+'" title="'+A.esc(s||"-")+'">'+A.esc(SS_LABEL[s]||s||"-")+'</span>';}
 function filters(){var f={};[["f-brand","brand"],["f-review_status","review_status"],["f-status","status"]].forEach(function(p){var v=$(p[0]).value;if(v)f[p[1]]=v;});
 var sku=$("f-sku").value.trim();if(sku)f.seller_sku=sku;return f;}
 function loadCounts(){[["Pending Review","lk-c-pending"],["Approved","lk-c-approved"],["Rejected","lk-c-rejected"]].forEach(function(p){
@@ -1587,7 +1675,7 @@ if(!res.rows.length){tb.innerHTML='<tr><td colspan="12" class="al-empty">%(no_ro
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
 '<td>'+A.esc(r.name)+'</td><td>'+A.esc(r.alert||"-")+'</td><td>'+A.esc(r.brand)+'</td><td>'+A.esc(r.platform||"-")+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td>'+
 '<td>'+ds1(r.locked_quantity)+'</td><td>'+A.esc(A.dt(r.lock_until))+'</td><td>'+A.esc(r.release_strategy||"-")+'</td>'+
-'<td>'+rvBadge(r.review_status)+'</td><td>'+A.esc(r.reviewed_by?(r.reviewed_by+" "+A.dt(r.reviewed_at)):"-")+'</td><td>'+A.actBadge(r.status)+'</td></tr>';}).join("");}
+'<td>'+rvBadge(r.review_status)+'</td><td>'+A.esc(r.reviewed_by?(r.reviewed_by+" "+A.dt(r.reviewed_at)):"-")+'</td><td>'+ssStatusBadge(r)+'</td></tr>';}).join("");}
 var from=S.total?S.start+1:0;$("lk-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;
 $("lk-prev").disabled=S.start<=0;$("lk-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="12" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
 function loadPauses(){A.call("api_pauses.list_pauses",{}).then(function(rows){S.pauses=rows;var tb=$("pz-rows");
@@ -1602,7 +1690,7 @@ function kvdl(rows){return '<dl class="al-kv">'+rows.map(function(p){return "<dt
 function openDrawer(r){S.current=r;$("lk-d-title").textContent=r.name;
 var trig=[["%(d_alert)s",A.esc(r.alert||"-")],["Brand",A.esc(r.brand)],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(reason_l)s",A.esc(r.lock_reason||"-")]];
 var reqa=[["%(qty_l)s",ds1(r.locked_quantity)],["Lock until",A.esc(A.dt(r.lock_until))],["Release strategy",A.esc(r.release_strategy||"-")],["Release required",r.release_required?"Yes":"-"]];
-var rev=[["Status",A.actBadge(r.status)],["Review",rvBadge(r.review_status)],["%(d_reviewed)s",A.esc(r.reviewed_by?(r.reviewed_by+" / "+A.dt(r.reviewed_at)):"-")],["%(d_note)s",A.esc(r.review_note||"-")]];
+var rev=[["%(d_outcome)s",ssStatusBadge(r)],["Review",rvBadge(r.review_status)],["%(d_reviewed)s",A.esc(r.reviewed_by?(r.reviewed_by+" / "+A.dt(r.reviewed_at)):"-")],["%(d_note)s",A.esc(r.review_note||"-")]];
 var tech=[["Actual stock before",ds1(r.actual_stock_before)],["Available before",ds1(r.available_stock_before)],["Buffer before",ds1(r.buffer_stock_before)],["Buffer after",ds1(r.buffer_stock_after)],["API response",A.esc(r.api_response||"-")]];
 $("lk-d-kv").innerHTML='<div class="al-fsec">%(d_trigger)s</div>'+kvdl(trig)+'<div class="al-fsec">%(d_reqaction)s</div>'+kvdl(reqa)+'<div class="al-action-box">%(d_simstate)s</div><div class="al-fsec">%(d_review)s</div>'+kvdl(rev)+'<details class="al-tech"><summary class="al-fsec" style="cursor:pointer">%(d_tech)s</summary>'+kvdl(tech)+'</details>';
 var can=(r.status==="Dry Run"||r.status==="Pending"||r.status==="Skipped");
@@ -1670,7 +1758,14 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
     d_note=js_escape("Ghi chú duyệt"),
     d_trigger=js_escape("Trigger & bằng chứng"), d_reqaction=js_escape("Hành động đề xuất"),
     d_simstate=js_escape("Simulation Mode — không có cập nhật tồn nào gửi sang Omisell."),
-    d_review=js_escape("Quyết định duyệt"), d_tech=js_escape("Chi tiết kỹ thuật"))
+    d_review=js_escape("Quyết định duyệt"), d_tech=js_escape("Chi tiết kỹ thuật"),
+    d_outcome=js_escape("Kết quả mô phỏng"),
+    rv_pending=js_escape("Chờ duyệt"), rv_approved=js_escape("Duyệt cho mô phỏng"),
+    rv_rejected=js_escape("Từ chối"),
+    ss_sim=js_escape("Mô phỏng"), ss_simdone=js_escape("Mô phỏng hoàn tất"),
+    ss_pending=js_escape("Chờ xử lý"), ss_processing=js_escape("Đang xử lý"),
+    ss_skipped=js_escape("Bỏ qua"), ss_failed=js_escape("Lỗi (mô phỏng)"),
+    ss_cancelled=js_escape("Đã huỷ"))
 
 
 # =================== PAGE 5: /alerts/integration-health (G1) =================
@@ -2011,7 +2106,10 @@ for el in ("dash-brand", "dash-platform", "dash-rule", "dash-topsku", "dash-agin
            # UI/UX consolidation 2026-06-15: Overview/Alerts subview split +
            # Recent Critical + EC Field Description adapter.
            'id="ov-dash"', 'id="ov-recent"', 'id="ov-recent-rows"',
-           'id="ov-viewall"', "loadRecent", "loadFieldHelp", "FIELD_HELP"):
+           'id="ov-viewall"', "loadRecent", "loadFieldHelp", "FIELD_HELP",
+           # RC 2026-06-15: business-label terminology (raw rule_code dropdowns
+           # relabelled to business labels at runtime; values stay raw codes).
+           "RULE_LABELS", "ruleCell", "relabelRuleOptions"):
     assert el in p1, "page1 missing " + el
 assert 'id="al-alert-list" hidden' in p1, "Alerts work-queue must be a hidden subview (not on Overview)"
 # the standalone hourly panel was consolidated into the main trend card.
@@ -2041,8 +2139,21 @@ for el in ("pl-template", "pl-upload", "csv-preview", "csv-import", "csv-errbox"
            "api_policies.policy_caps", "applyCaps", "showLifecycle",
            "openCoverageFor", "ensureCovBrand",
            # AC-POLISH-2026-06-14: toolbar action group + brand coverage chips
-           "al-hdr-actions", "al-chip-n"):
+           "al-hdr-actions", "al-chip-n",
+           # RC 2026-06-15: compact coverage summary (Covered / Missing / Coverage %)
+           # built from the canonical coverage_report; Missing card is clickable
+           # to the existing missing-policy view; basis labelled + info tooltip.
+           'id="pl-cov-kpis"', 'id="pl-cov-covered"', 'id="pl-cov-missing"',
+           'id="pl-cov-pct"', 'data-cov="missing"', "loadCoverageSummary",
+           "openMissingView", 'data-help="price_setup.coverage"',
+           "api_sku_catalog.policy_missing_skus"):
     assert el in pol, "page2 missing " + el
+# coverage basis must be truthfully labelled (distinct ordered SKUs, last 30 days)
+polc = _h.unescape(pol)
+assert ("30" in polc and ("đơn" in polc or "ordered" in polc.lower())), \
+    "Price Setup coverage must label its 30-day ordered-SKU basis"
+# the per-brand missing detail is kept but demoted to a drill-down (not dominant)
+assert 'id="pl-cov-bybrand"' in pol, "per-brand missing detail must remain as a drill-down"
 
 p3 = open(os.path.join(OUTDIR, "alert_rules.html")).read()
 for el in ("ru-rows", "ru-overlap", "ru-tier-line", "al-banner",
@@ -2054,8 +2165,22 @@ for el in ("ru-rows", "ru-overlap", "ru-tier-line", "al-banner",
            'al-drawer-wide" id="ru-drawer"',
            # UI/UX 2026-06-15: Brand Defaults + Advanced Exceptions restructure
            'id="ru-defaults"', 'id="ru-exc-sec"', "renderDefaults",
-           "renderExceptions", "BEHAVIORS", "ru-brand-h"):
+           "renderExceptions", "BEHAVIORS", "ru-brand-h",
+           # RC 2026-06-15: rule editor Advanced collapsed by default + EC Field
+           # Description help icons (static fallback) + business-label rule options.
+           'id="ru-adv-sec"', 'id="ru-tier-legend"', "applyFieldHelp",
+           "relabelRuleOptions",
+           'data-help="rules.rule_type"', 'data-help="rules.threshold"',
+           'data-help="rules.action"', 'data-help="rules.recommend_stock_safety"',
+           'data-help="rules.scope_priority"', 'data-help="rules.brand_default"',
+           'data-help="rules.platform_override"', 'data-help="rules.shop_override"',
+           'data-help="rules.sku_exception"'):
     assert el in p3, "page3 missing " + el
+# the rule editor Advanced section is a <details> WITHOUT `open` (collapsed default)
+assert '<details class="al-adv-sec" id="ru-adv-sec">' in p3, \
+    "rule editor Advanced must be collapsed by default (no open attribute)"
+# all nine required help-icon topics are wired
+assert p3.count('data-help="rules.') >= 9, "rules page must expose >=9 EC Field Description help icons"
 assert p3.count("al-fsec") >= 5, "rules drawer should have >=5 sections"
 assert "DS1" in _h.unescape(p3)
 p3u = _h.unescape(p3)
@@ -2087,6 +2212,14 @@ assert p4.count("al-fsec") >= 4, "stock drawer should group >=4 sections"
 # Automation Pauses must live INSIDE this page, not as a standalone global nav item.
 assert "stock-pauses" in p4 and 'href="/alerts/pauses"' not in p4, \
     "Automation Pauses must be an internal Stock Safety tab, not a global nav route"
+# RC 2026-06-15 truthfulness: outcomes are labelled as SIMULATION (review_action
+# performs no Omisell write; DS1 closed). The simulation-truthful label maps must
+# be present, and the page must NOT label any record "Live" (no backend proof of
+# a live write exists today).
+for el in ("ssStatusBadge", "var RV_LABEL", "var SS_LABEL"):
+    assert el in p4, "page4 missing truthful-label helper " + el
+assert ">Live<" not in p4, "Stock Safety must not present a 'Live' status (no live write occurs)"
+assert "ph\\u1ecfng" in p4, "Stock Safety outcome labels must read as simulation"
 print("[OK] M4 asserts pass")
 
 p5 = open(os.path.join(OUTDIR, "alert_health.html")).read()
