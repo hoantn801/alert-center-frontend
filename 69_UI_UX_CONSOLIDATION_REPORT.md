@@ -1017,3 +1017,201 @@ assets) and `frontend\_preview_polish.html` are disposable; not staged.
 - builder refactored + validated · committed: NO · pushed: NO
 - Price Setup RC2 (22f6315) preserved: YES
 - merged: NO · deployed: NO
+
+## 19. RC3 UI/UX + workflow correction (2026-06-15) — Pass 1 + Pass 2
+
+Verified frontend base = **`f87b8e2 Alert UI: use shared interactive ECharts`**.
+Two passes, ONE combined validation, ONE final commit. **Frontend-only.**
+
+### 19.1 No backend / schema / API change
+
+Backend inspection (before editing) confirmed nothing was missing, so **no
+DocType, schema, API, permission, or scheduler change was made**. The only file
+changed is `frontend/build_alert_pages.py` (+ this report). The five generated
+`frontend/alert_*.html` stay git-ignored. The shared ECharts assets and the
+Price Setup contextual footer are unchanged (verified, no regression).
+
+Reused existing fields/endpoints:
+- Per-order components + marketplace id: `EC Alert Occurrence` via
+  `api_alerts.alert_occurrences` (`external_order_id`, `rsp_price`,
+  `seller_discount_amount`, `seller_voucher_amount`, `platform_discount_amount`,
+  `platform_voucher_amount`, `effective_check_price`, `min_price_at_check`,
+  `baseline_price_at_check`, `gap_percent`, `price_components_used`). No Omisell/
+  warehouse order id exists in the occurrence, so `external_order_id` is the
+  primary order id.
+- Lifecycle: `api_alerts.set_status` (In Review / Closed / Ignored).
+- Rules: `api_rules.list_rules` / `save_rule` / `set_rule_status` (Draft/Active/
+  Paused). No delete endpoint exists, so "remove platform override" = set that
+  override rule **Paused** (it stops applying → Brand Default takes over).
+
+### 19.2 Pass 1 (UI + workflow corrections)
+
+A1 advanced-filter spacing + subtle card + true zero-height collapse (the
+`display:flex` rule was overriding `[hidden]`). A2 SLA bars relative to the max
+bucket (zero = no fill, positive = visible min width, progressive blue→amber→
+orange→pink), count preserved. A3 Recent Critical rows clickable + Enter/Space →
+open drawer. B1 raw `price_components_used` moved to Technical Details/CSV/tooltip;
+friendly breakdown remains. B3 contextual lifecycle footer (Claim→In Review,
+Resolve→**Closed** [fixes the rejected "Resolved" bug], Ignore in More, terminal =
+no primary); Pause Automation + Source Order removed from the alert drawer (F).
+B4 evidence shows `external_order_id`. C1 ERP Item hidden; C2 alert thresholds
+removed from Price Setup; C3/E4 effective-period UI removed from Price Setup and
+Rules — all kept as hidden inputs so values persist and Active validation can't
+regress. D one scope-priority line with per-tier tooltips (duplicates removed).
+E1 rule-code bug fixed (`relabelRuleOptions` pins the canonical code onto
+`o.value`; editor options carry explicit `value="below_min"` …). E3 (partial)
+severity override hidden.
+
+### 19.3 Pass 2 — B2 selected-occurrence mapping
+
+The price-calculation panel is sourced from the **selected `EC Alert Occurrence`
+row** (`renderCalc(o)`), defaulting to the latest violating occurrence
+(`rows[0]`, ordered `detected_at desc`). Clicking or Enter/Space on a row
+(`selectOcc(i)`) re-renders the panel from that row and highlights it
+(`al-occ-sel`); the heading shows that row's `external_order_id`; the panel is
+sticky (`.al-calc`) so it stays visible while the table scrolls. Every value (RSP,
+seller/platform discount+voucher, effective price, min, baseline, gap) comes from
+the selected row — the alert-summary values are not used once a row is selected,
+and nothing is fabricated. CSV export stays based on the full list (`S.occ`);
+reopening the drawer resets `S.selOcc=0`.
+
+### 19.4 Pass 2 — E2/E3 Rules business editor + precedence
+
+UI→backend mapping: each brand card shows three behaviours →
+`below_min` (Below minimum price), `severe_price_drop` (Severe price drop),
+`above_high` (Above benchmark). "All platforms" = the **`platform="All"` Brand
+Default** row (no new rule code / scope type). "Customize by platform" lists
+Shopee/Lazada/TikTok: a platform with its own rule is **overridden** (badge); else
+it **inherits** the brand default (muted "inherits N%"). Each behaviour's threshold
+is written to its canonical field — `below_min → threshold_percent`,
+`severe_price_drop → severe_drop_percent`, `above_high → high_alert_percent`. Edit/
+Configure/Add prefill the (E3-simplified) drawer for `brand~rule_code~platform`;
+Remove sets the override Paused (fallback). The Advanced Exceptions table keeps
+Shop/SKU rules.
+
+Precedence resolver (`ruleMatchScore`/`resolveRule`/`resolveThreshold`) is a
+faithful frontend mirror of the backend `services/rule_overlay._match_score`:
+the threshold for a rule_code comes from the **most specific** matching rule
+(SKU +8 > Shop +4 > Platform +2 > Brand +1), resolved **independently per rule
+code, never merged, never "stricter value"**. A deterministic self-test runs on
+load and in CI (node):
+
+```
+severe_price_drop: Brand 50 / Shopee 60 / SKU 70
+  generic (Lazada)        -> 50
+  Shopee                  -> 60
+  matching SKU            -> 70
+  a 55% drop alerts generic (>=50) but NOT Shopee (<60) or SKU (<70)
+verified independently for below_min and above_high
+=> precedence self-test: PASS
+```
+
+### 19.5 Combined validation output
+
+```
+py_compile OK
+5-page build OK
+[OK] M2c (Price Setup simplified) / M2/M2b (+A1,A2,A3,B1,B3,B4,E1,B2)
+[OK] M2d (Price Setup footer preserved) / M3 (+D,E1,E4,E2,E3,precedence)
+[OK] M4 / G1 / module-shell / consolidation
+node --check OK on all 5 pages
+precedence self-test (node): PASS  (50/60/70 + 55% case, all 3 rule codes)
+duplicate IDs: NONE (all 5) · non-ASCII: 0 (all 5)
+dead-control audit: NONE unbound
+ECharts shared assets: present (no regression) · Price Setup pl-life footer: present
+no conflict markers · no trailing whitespace · no secrets · generated HTML git-ignored
+```
+
+### 19.6 Final commit (owner, Windows — one commit for Pass 1 + Pass 2)
+
+```powershell
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git status   # confirm NO generated frontend\*.html staged, no secrets
+git commit -m "Alert UI: RC3 workflow corrections + Rules business editor (Pass 1+2)"
+git push     # feat/alert-ui-ux-consolidation
+```
+
+## 20. E3 completion — fully simplified KAM rule editor (2026-06-15)
+
+The rule drawer was rebuilt so the KAM-facing editor exposes ONLY business fields.
+
+### 20.1 Visible vs hidden
+
+Visible: Brand · Behaviour (Below minimum price / Severe price drop / Above
+benchmark) · ONE "All platforms" threshold · optional "Customize by platform"
+(Shopee / Lazada / TikTok, each marked inherited/overridden) · Save / Cancel.
+
+Removed from the UI (verified absent in the built page): the raw rule-code
+`<select>` (`r-rule_code`), the raw scope selectors (`r-platform` / `r-shop` /
+`r-seller_sku` / `r-item`), the three simultaneous threshold inputs
+(`r-severe_drop_percent` / `r-high_alert_percent` / `r-threshold_percent`), the
+severity-override `<select>`, the lifecycle transition buttons
+(`ru-st-active/paused/draft`), the overlap tool, and the effective-period fields.
+Canonical rule codes / scope values stay internal in JS/API payloads only
+(behaviour `<select>` carries `value="below_min"` … but shows business labels;
+severity_override + effective_from/to remain as hidden inputs so existing values
+are not lost).
+
+### 20.2 ONE behaviour threshold input — and the truthful field it writes
+
+The editor shows exactly one threshold input (`r-thr-all`) per behaviour. IMPORTANT
+backend reality discovered on inspection: `api_rules` EDITABLE persists ONLY
+`threshold_percent` — `severe_drop_percent` / `high_alert_percent` are doctype-/
+overlay-read-only fields and are NOT in the rule API. So with **no backend change**
+the editor writes `threshold_percent` for every behaviour, and the backend
+`rule_overlay` maps it to the right behaviour by `rule_code`
+(`severe_drop_percent or threshold_percent`, etc.). Implementing the literal
+per-field mapping (`severe_price_drop → severe_drop_percent`) would require adding
+those fields to the rule API — a backend change, explicitly out of scope. The
+frontend resolver/test still mirror the overlay's read order (per-field with
+`threshold_percent` fallback), so the precedence test remains exact.
+
+### 20.3 Remove platform override
+
+The user-facing action is **"Bỏ tùy chỉnh"** with helper **"Sẽ dùng lại giá trị
+All platforms"** — never "Pause rule". Under the hood it calls
+`set_rule_status(Paused)` on the override (no delete API exists), then re-renders:
+the platform shows as inherited with the Brand Default value, and the paused
+override no longer applies.
+
+### 20.4 Source-of-truth boundary
+
+The frontend precedence resolver is used ONLY for UI preview + the deterministic
+self-test/assert. The backend `rule_overlay` remains the single source of truth for
+actual alert evaluation; no backend evaluation logic is duplicated or replaced in
+production behaviour.
+
+### 20.5 E3 validation (added to the combined run)
+
+```
+Rule drawer: no raw rule-code <select> (r-rule_code absent)         PASS
+Rule drawer: no raw scope <select> (r-platform/shop/seller_sku)     PASS
+exactly ONE threshold input visible (r-thr-all; 3-field set absent) PASS
+severity-override <select> absent                                  PASS
+effective-period fields absent (hidden inputs only; no date picker) PASS
+"Bỏ tùy chỉnh" + "Sẽ dùng lại giá trị All platforms" present; no "Pause" label  PASS
+canonical rule_code + threshold_percent submitted (RULE_SAVE_THR_FIELD) PASS
+precedence self-test (node): PASS · 5-page build + all asserts: PASS
+node ×5 · dup IDs NONE · dead-control NONE · 0 non-ASCII
+ECharts shared assets + Price Setup pl-life footer: unchanged
+no conflicts / trailing-ws / secrets · generated HTML git-ignored
+```
+
+### 20.6 Status — single final commit ready
+
+Frontend-only; `frontend/build_alert_pages.py` (+263 / −764, a net simplification)
+and this report. No backend/schema/API change. Owner runs the one final commit on
+Windows:
+
+```powershell
+cd C:\dev\ALERT_CENTER
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git commit -m "Alert UI: RC3 workflow corrections + simplified Rules editor (Pass 1+2, E3 complete)"
+git push
+```
+
+- Pass 1 + Pass 2 + E3 implemented + combined validation: PASS
+- backend/schema/API change: NONE · committed: NO · pushed: NO · merged: NO · deployed: NO
