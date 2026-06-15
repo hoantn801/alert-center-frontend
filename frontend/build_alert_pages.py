@@ -326,6 +326,11 @@ SHARED_CSS = """
 /* UI/UX consolidation 2026-06-15: Overview Alert Distribution card + secondary KPI */
 .ecentric-app .al-dist3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 16px;padding:8px 0 12px}
 .ecentric-app .al-dist-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);padding:6px 16px 2px}
+.ecentric-app .al-help-i{display:inline-flex;cursor:help;color:var(--gray-400);font-size:13px;margin-left:4px;vertical-align:middle}
+.ecentric-app .al-help-i:hover{color:var(--navy)}
+.ecentric-app .al-help-i:focus-visible{outline:2px solid var(--navy);outline-offset:1px;border-radius:3px}
+.ecentric-app .al-adv-sec{margin-top:14px;border-top:1px solid var(--gray-200);padding-top:6px}
+.ecentric-app .al-adv-sec>summary{cursor:pointer;color:var(--navy)}
 .ecentric-app .al-modesw{display:inline-flex;margin-left:10px;vertical-align:middle}
 .ecentric-app .al-modesw .al-btn{height:26px;font-size:12px;border-radius:0;padding:0 12px}
 .ecentric-app .al-modesw .al-btn:first-child{border-radius:6px 0 0 6px}
@@ -848,41 +853,46 @@ PAGE2_CONTENT = """
     <div class="al-fgrid">
       <div class="al-fld"><label>Brand <span class="al-req">*</span></label><select id="e-brand"></select></div>
       <div class="al-fld"><label>Platform <span class="al-req">*</span></label><select id="e-platform"><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
-      <div class="al-fld al-col2"><label>Shop <span class="al-opt">(%(optional)s)</span></label><input id="e-shop" type="text" placeholder="EC Marketplace Shop"><div class="al-help">%(h_shop)s</div></div>
-      <div class="al-fld al-col2"><label>Seller SKU <span class="al-req">*</span></label>
-        <div class="al-inline"><input id="e-seller_sku" type="text"><button type="button" class="al-btn" id="e-sku-search">%(sku_btn)s</button></div>
-        <div class="al-help">%(h_sku)s</div></div>
+      <div class="al-fld al-col2"><label>Shop <span class="al-opt">(%(optional)s)</span><span class="al-help-i" data-help="price_setup.shop" title="%(h_shop)s" tabindex="0" role="img" aria-label="%(h_shop)s">&#9432;</span></label><input id="e-shop" type="text" placeholder="EC Marketplace Shop"></div>
+      <div class="al-fld al-col2"><label>Seller SKU <span class="al-req">*</span><span class="al-help-i" data-help="price_setup.seller_sku" title="%(h_sku)s" tabindex="0" role="img" aria-label="%(h_sku)s">&#9432;</span></label>
+        <div class="al-inline"><input id="e-seller_sku" type="text"><button type="button" class="al-btn" id="e-sku-search">%(sku_btn)s</button></div></div>
       <div class="al-fld al-col2"><label>Item <span class="al-opt">(%(optional)s)</span></label><input id="e-item" type="text" placeholder="ERPNext Item code"></div>
     </div>
-    <div class="al-note"><span class="al-note-ic">&#9432;</span><span>%(h_all_fallback)s</span></div>
+    <div class="al-note" id="e-scope-preview"><span class="al-note-ic">&#9432;</span><span class="al-sp-text">%(scope_default)s</span></div>
+    <div class="al-help">%(priority_line)s</div>
 
     <div class="al-fsec">%(s_product)s</div>
     <div class="al-fgrid">
-      <div class="al-fld al-col2"><label>%(product)s</label><input id="e-product_name" type="text"><div class="al-help">%(h_product)s</div></div>
+      <div class="al-fld al-col2"><label>%(product)s<span class="al-help-i" data-help="price_setup.product_name" title="%(h_product)s" tabindex="0" role="img" aria-label="%(h_product)s">&#9432;</span></label><input id="e-product_name" type="text"></div>
     </div>
 
     <div class="al-fsec">%(s_price)s</div>
     <div class="al-fgrid">
-      <div class="al-fld"><label>Min price <span class="al-req">*</span></label><input id="e-min_price" type="number"><div class="al-help">%(h_min)s</div></div>
-      <div class="al-fld"><label>%(lbl_ref)s</label><input id="e-reference_price" type="number"><div class="al-help">%(h_ref)s</div></div>
-      <div class="al-fld al-col2"><label>%(lbl_target)s</label><input id="e-target_price" type="number"><div class="al-help">%(h_target)s</div></div>
-      <div class="al-fld"><label>High alert %% <span class="al-req">*</span></label><input id="e-high_alert_percent" type="number" step="0.01" min="0" max="100"><div class="al-help">%(h_high)s</div></div>
-      <div class="al-fld"><label>Severe drop %% <span class="al-req">*</span></label><input id="e-severe_drop_percent" type="number" step="0.01" min="0" max="100"><div class="al-help">%(h_severe)s</div></div>
+      <div class="al-fld"><label>Min price <span class="al-req">*</span><span class="al-help-i" data-help="price_setup.minimum_price" title="%(h_min)s" tabindex="0" role="img" aria-label="%(h_min)s">&#9432;</span></label><input id="e-min_price" type="number"></div>
+      <div class="al-fld"><label>%(lbl_ref)s<span class="al-help-i" data-help="price_setup.reference_price" title="%(h_ref)s" tabindex="0" role="img" aria-label="%(h_ref)s">&#9432;</span></label><input id="e-reference_price" type="number"></div>
+      <div class="al-fld al-col2"><label>%(lbl_target)s<span class="al-help-i" data-help="price_setup.rsp" title="%(h_target)s" tabindex="0" role="img" aria-label="%(h_target)s">&#9432;</span></label><input id="e-target_price" type="number"></div>
     </div>
 
-    <div class="al-note" style="margin-top:14px"><span class="al-note-ic">&#9432;</span><span>%(h_active_req)s</span></div>
-    <div class="al-lockbox">
-      <label class="al-check"><input id="e-enable_lock" type="checkbox"> %(enable_lock)s</label>
-      <div class="al-help">%(h_lock)s</div>
-    </div>
-
-    <div class="al-fsec">%(s_eff)s</div>
+    <div class="al-fsec">%(s_alert_beh)s</div>
     <div class="al-fgrid">
-      <div class="al-fld"><label>%(eff_from)s</label><input id="e-effective_from" type="date"></div>
-      <div class="al-fld"><label>%(eff_to)s</label><input id="e-effective_to" type="date"></div>
-      <div class="al-fld"><label>Owner (KAM)</label><input id="e-owner_user" type="text" placeholder="user@email"></div>
-      <div class="al-fld"><label>Status</label><div id="pl-status-line" style="padding-top:6px;font-size:13px"></div></div>
+      <div class="al-fld"><label>High alert %% <span class="al-req">*</span><span class="al-help-i" data-help="price_setup.high_alert_percent" title="%(h_high)s" tabindex="0" role="img" aria-label="%(h_high)s">&#9432;</span></label><input id="e-high_alert_percent" type="number" step="0.01" min="0" max="100"></div>
+      <div class="al-fld"><label>Severe drop %% <span class="al-req">*</span><span class="al-help-i" data-help="price_setup.severe_drop_percent" title="%(h_severe)s" tabindex="0" role="img" aria-label="%(h_severe)s">&#9432;</span></label><input id="e-severe_drop_percent" type="number" step="0.01" min="0" max="100"></div>
     </div>
+    <div class="al-help">%(alert_beh_copy)s</div>
+
+    <details class="al-adv-sec">
+      <summary class="al-fsec" style="list-style:revert">%(s_advanced)s</summary>
+      <div class="al-fgrid" style="margin-top:8px">
+        <div class="al-fld"><label>%(eff_from)s</label><input id="e-effective_from" type="date"></div>
+        <div class="al-fld"><label>%(eff_to)s</label><input id="e-effective_to" type="date"></div>
+        <div class="al-fld"><label>Owner (KAM)</label><input id="e-owner_user" type="text" placeholder="user@email"></div>
+        <div class="al-fld"><label>Status</label><div id="pl-status-line" style="padding-top:6px;font-size:13px"></div></div>
+      </div>
+      <div class="al-lockbox">
+        <label class="al-check"><input id="e-enable_lock" type="checkbox"> %(enable_lock)s</label>
+        <div class="al-help">%(h_lock)s</div>
+      </div>
+    </details>
   </div>
   <div class="al-drawer-actions">
     <button class="al-btn primary" id="pl-save">%(save)s</button>
@@ -966,7 +976,12 @@ PAGE2_CONTENT = """
     "s_scope": H("1. Phạm vi áp dụng"),
     "h_all_fallback": H("Platform=All thường nên để Shop trống. Policy theo platform/shop cụ thể sẽ OVERRIDE policy All. Hệ thống chặn 2 Active policy trùng y hệt scope."),
     "s_product": H("2. Thông tin sản phẩm"),
-    "s_price": H("3. Chính sách giá"),
+    "s_price": H("3. Giá (Chính sách giá)"),
+    "s_alert_beh": H("4. Hành vi cảnh báo"),
+    "s_advanced": H("Cài đặt nâng cao"),
+    "scope_default": H("Brand Default — áp dụng cho tất cả sản phẩm của brand"),
+    "priority_line": H("Ưu tiên áp dụng: SKU > Shop > Platform > Brand"),
+    "alert_beh_copy": H("Các ngưỡng này giúp phát hiện sai lệch giá. Price Setup định nghĩa giá đúng; Rules quyết định hệ thống phản ứng thế nào."),
     "s_thresh": H("4. Ngưỡng cảnh báo"),
     "h_active_req": H("Draft cho phep de trong Min / High % / Severe %. Khi chuyen Active bat buoc du ca ba va dung range: Min > 0, 0 < High % <= 100, 0 < Severe % <= 100. Backend la nguon xac thuc cuoi cung."),
     "s_eff": H("5. Hiệu lực & Owner"),
@@ -1052,7 +1067,19 @@ FIELDS.forEach(function(k){var el=$("e-"+k);if(el)el.value=(r&&r[k]!=null)?r[k]:
 $("e-enable_lock").checked=!!(r&&r.enable_stock_safety_lock);
 $("pl-status-line").innerHTML=r?("Status: "+A.polBadge(r.status)+(r.import_batch?(" &#183; batch "+A.esc(r.import_batch)):"")):"Status: "+A.polBadge("Draft");
 applyCaps($("e-brand").value);
+updateScopePreview();applyFieldHelp($("pl-drawer"));
 $("al-overlay").hidden=false;$("pl-drawer").hidden=false;}
+// Live scope preview (informational only; backend resolution unchanged).
+function updateScopePreview(){var sp=$("e-scope-preview");if(!sp)return;var t=sp.querySelector(".al-sp-text");if(!t)return;
+var b=$("e-brand").value||"(brand)",pf=$("e-platform").value,sh=$("e-shop").value.trim(),sk=($("e-seller_sku").value.trim()||$("e-item").value.trim());
+var scope,msg;
+if(sk){scope="%(ps_sku)s";msg=b+" \\u2192 SKU "+sk;}
+else if(sh){scope="%(ps_shop)s";msg=b+" \\u2192 shop "+sh;}
+else if(pf&&pf!=="All"){scope="%(ps_platform)s";msg=b+" \\u2192 "+pf;}
+else{scope="%(ps_brand)s";msg="t\\u1ea5t c\\u1ea3 "+b;}
+t.textContent=scope+" \\u2014 "+msg;}
+// Upgrade info-icon tooltips from EC Field Description when a record exists.
+function applyFieldHelp(root){var els=(root||document).querySelectorAll("[data-help]");Array.prototype.forEach.call(els,function(el){var h=A.fieldHelp(el.getAttribute("data-help"));if(h&&h.help){el.title=h.help;el.setAttribute("aria-label",h.help);}});}
 function closeDrawer(){$("al-overlay").hidden=true;$("pl-drawer").hidden=true;}
 function save(){var data={brand:$("e-brand").value};
 FIELDS.forEach(function(k){var v=$("e-"+k).value;if(v!=="")data[k]=v;});
@@ -1164,7 +1191,8 @@ $("csv-file").addEventListener("change",invalidatePreview);
 $("csv-all").onclick=function(){var on=$("csv-all").checked;Array.prototype.forEach.call(document.querySelectorAll("#csv-rows .csv-pick"),function(cb){cb.checked=on;});refreshImportBtn();};
 $("csv-rows").addEventListener("change",function(ev){if(ev.target.classList&&ev.target.classList.contains("csv-pick"))refreshImportBtn();});
 $("pl-missing-rows").addEventListener("click",function(ev){var el=ev.target.closest("[data-mbrand]");if(!el)return;openCoverageFor(el.getAttribute("data-mbrand"));});
-$("e-brand").addEventListener("change",function(){applyCaps($("e-brand").value);});}
+$("e-brand").addEventListener("change",function(){applyCaps($("e-brand").value);});
+["e-brand","e-platform","e-shop","e-seller_sku","e-item"].forEach(function(id){var el=$(id);if(el){el.addEventListener("change",updateScopePreview);el.addEventListener("input",updateScopePreview);}});}
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init);}else{init();}
 })();
 </script>
@@ -1852,11 +1880,19 @@ for needle in ("al-drawer-wide", "al-fgrid", "al-fsec", "al-help", "al-lockbox",
     assert needle in pol, "policies drawer missing " + needle
 polu = _h.unescape(pol)
 for vn in ("Phạm vi áp dụng", "Chính sách giá",
-           "Hiệu lực & Owner", "Giá bán thấp nhất",
+           "Giá bán thấp nhất",
            "Reference / Benchmark price", "Listed price / RSP",
            "Tìm SKU từ Omisell",
-           "Real stock write vẫn bị khoá bởi DS1"):
+           "Real stock write vẫn bị khoá bởi DS1",
+           # UI/UX 2026-06-15: grouped drawer + Advanced + scope preview + Rules copy
+           "Hành vi cảnh báo", "Cài đặt nâng cao",
+           "Ưu tiên áp dụng: SKU > Shop > Platform > Brand",
+           "Rules quyết định hệ thống phản ứng"):
     assert vn in polu, "policies drawer missing helper/section: " + vn
+# grouped drawer structure: live scope preview + collapsed Advanced + info icons
+assert 'id="e-scope-preview"' in pol, "Price Setup live scope preview missing"
+assert "al-adv-sec" in pol and "updateScopePreview" in pol, "Price Setup grouped sections / Advanced collapse missing"
+assert 'data-help="price_setup.minimum_price"' in pol and "applyFieldHelp" in pol, "Price Setup info-icon (EC Field Description) help missing"
 assert 'id="e-sku-search"' in pol and 'id="e-sku-search" disabled' not in pol, "G2.1: SKU search button must be ENABLED"
 assert '<select id="e-brand">' in pol, "brand dropdown not in grid form"
 # Price Setup mini-phase 2026-06-14: thresholds are entered ON the policy form
