@@ -223,6 +223,154 @@ python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_se
 Local implemented (commit group 1), branch + commit commands prepared for the
 owner (sandbox cannot authenticate a push). Deeper redesign deferred per above.
 
+## 7. RC4 - final UAT polish (six scoped items, frontend-only)
+
+All six RC4 items are implemented in the single builder
+`frontend/build_alert_pages.py`. Every change is **frontend-only**; no backend
+doctype, API, permission, or scheduler file was modified. No real stock lock is
+introduced (DS1 stays closed). The shared ECharts architecture, the RC3 lifecycle
+fixes, the selected-evidence calculation, and the Price Setup lifecycle footer are
+all preserved.
+
+**RC4-1 - Remove duplicated top-tab nav + compact Overview KPIs.** The horizontal
+sub-nav tab strip is removed from all five pages (the build loop injects an empty
+string for `%(SUBNAV)s`, and the now-dead `.al-subnav` CSS + active-highlight JS
+are deleted), so the sidebar is the sole primary navigation. The six Overview KPI
+cards are compacted (`#al-kpis` padding 9x13, value font 23px with a clear
+number/label hierarchy, smaller meta) and use business-friendly subtitles - no raw
+codes (the Setup-Issues card reads "Thieu cau hinh brand / shop", not
+`missing_brand_mapping`).
+
+**RC4-2 - SLA aging bars (real DOM/CSS fix).** Root cause found in the rendered
+markup, not the formula: `.al-bar-fill` was a `<span>` (display:inline), so the
+inline `width`/`height` were ignored and positive bars showed no fill. Fix:
+`.al-bar-fill{display:block; ...}` over a visible neutral `.al-bar-track`, with the
+existing width formula (zero -> 0%, value 1 of max 3 -> 33%, value 3 -> 100%). A
+rendered-markup assertion now proves the formula maps `[0,1,0,3] -> [0,33,0,100]`,
+that the fill is `display:block`, and that its background colour is non-transparent.
+
+**RC4-3 - Truthful order identifier (Omisell/internal, NOT marketplace).** Backend
+inspection confirmed the exact field: in
+`ecentric_workspace/alerts/services/omisell_normalizer.py` the occurrence's
+`external_order_id` is populated from `omisell_order_number` (Omisell's internal
+order id). The real marketplace/platform number is read into `_platform_order_number`
+but is **not persisted** by `services/ingestion.py`, so no marketplace id exists in
+the read API today. Per the owner's decision (option 1), the UI now labels this id
+truthfully as **"Ma don Omisell"** in both the evidence table and the
+selected-evidence calculation heading - no hyperlink, no fabricated marketplace
+number. The selected-evidence calculation behaviour is unchanged. **No capture
+pipeline was built in RC4.** Backend follow-up (separate work) to surface a real
+marketplace order id: (1) capture `_platform_order_number` from the source payload,
+(2) persist it on the order-log / occurrence path, (3) expose it through the read
+API, (4) backfill only where source data exists, (5) only then switch the UI label
+to the marketplace order id.
+
+**RC4-4 - Direct Ignore (no More menu).** The "More" button and its dropdown
+(`al-d-more` / `-wrap` / `-menu`) are removed entirely. The alert drawer footer now
+shows: Open -> primary **Claim** + secondary **Ignore**; In Review -> primary
+**Resolve** + secondary **Ignore**; terminal states -> no lifecycle actions.
+`refreshAlertFooter(st)` toggles the three buttons directly and Ignore uses the
+existing canonical transition `setStatus("Ignored")`.
+
+**RC4-5 - Price Setup save fix + form simplification.** The save failed with
+"High-alert % (high_alert_percent) must be > 0 and <= 100" because the form
+submitted Rules-owned threshold fields and effective-period fields whose
+blank/0 values tripped range validation (`policy_validation._present(0)` is True,
+and `0 < x <= 100` then fails). Inspected the API contract
+(`alerts/api_policies.py` EDITABLE + `save_policy`) first. **Payload correction:**
+`high_alert_percent`, `severe_drop_percent`, `effective_from`, `effective_to` and
+`item` are removed from the submitted `FIELDS` list, so `save()` can never send a
+blank/0 threshold or overwrite a legacy value; `enable_stock_safety_lock` is no
+longer submitted either. The visible form is now Brand, Platform, Shop, Seller SKU,
+Product name, Min price, Reference/Benchmark, Listed/RSP, scope preview, Save/Cancel.
+The "Advanced Settings" section is removed entirely (no business field remained).
+ERP Item stays as a hidden input used only for the live scope preview (never
+submitted). Validated for both create (empty thresholds -> defaults pass) and edit
+(removed fields are not resent, so existing values are preserved).
+
+**RC4-6 - Inline Rules editing (no drawer).** The rule editor drawer (`ru-drawer`
+and all of `r-behaviour` / `r-thr-all` / `ru-cust-rows` / `ru-save` / `ru-cancel` /
+`openRule` / `fillDrawer` / `clearOverride`) is removed. Each behaviour (Below
+minimum price / Severe price drop / Above benchmark) is now edited **inline inside
+its brand card**: an "All platforms" threshold input + inline Save, an
+expand/collapse platform-customization panel (Shopee / Lazada / TikTok) showing
+inherited vs overridden values, per-platform Save, and "Remove customization" which
+pauses the override so the All-platforms Brand Default value applies again. Exactly
+one threshold per behaviour; a platform input affects only that behaviour's
+rule_code; no raw rule code or scope type is exposed. **Write behaviour:** the rule
+API's only EDITABLE threshold field is `threshold_percent`, so every behaviour
+writes that single field with its canonical `rule_code` (from `BEHAVIORS`); the
+backend overlay maps it to the right behaviour. The backend remains the evaluation
+source of truth - the frontend `ruleMatchScore`/`resolveThreshold` resolver is
+preview/test only, and its deterministic precedence self-test still runs on load.
+
+**RC4-7 - Final cleanup: legacy threshold exposure removed from all Price Setup
+surfaces (post-UAT).** Generated-page inspection found the Rules-owned thresholds
+still surfaced in the CSV import workbench even though the form no longer used them.
+Removed from the Price Setup UI: the CSV preview column headers ("High %", "Severe
+%"), the CSV preview row render (`rw.high_alert_percent`, `rw.severe_drop_percent`),
+and the paste-import placeholder header hint. The main policy list, the form, and the
+submit payload were already clean. The backend fields/parsing are untouched (legacy
+values stay stored for compatibility; the UI neither displays nor templates them).
+Rules remains the only UI source for alert thresholds. The Rules drawer removal was
+re-verified with FUNCTIONAL markers (specific drawer IDs + bindings: `id="ru-drawer"`,
+`id="ru-overlay"`, `id="ru-save"`/`ru-cancel`, `openDrawer(`, `openRule`/`fillDrawer`)
+rather than the shared `.al-drawer` CSS class, which legitimately remains for other
+modules. Business labels were verified in the rendered output: `missing_brand_mapping`
+displays as "Thieu cau hinh brand", the evidence id as "Ma don Omisell", the direct
+action as "Bo qua", and override removal as "Bo tuy chinh" (raw codes remain only in
+option values / lookup maps / payloads, never as visible labels).
+
+### Files changed (RC4)
+
+- `frontend/build_alert_pages.py` - the only source file changed (markup, CSS, JS
+  and the in-builder assertion suite for all seven items).
+- `frontend/alert_*.html` (5 files) - regenerated build artifacts; **git-ignored**
+  (source of truth is the builder + snapshot).
+
+No files under `ecentric_workspace/` (backend) were changed.
+
+### Validation (RC4)
+
+- `python -m py_compile` of the builder: OK.
+- Full build of all 5 pages: OK.
+- In-builder assertion suites all pass: `M2c` (Price Setup payload fixed; no
+  thresholds / effective / Advanced), `M2/M2b` (dashboard + RC4-1/2/3/4 asserts),
+  `M2d` (Price Setup footer), `M3` (Rules inline editor + no drawer), `M4`
+  (Stock Safety), `G1` (Integration Health), module-shell + nav/terminology.
+- New RC4 assertions: no `al-subnav` on any page; compact KPI rules; SLA
+  `display:block` fill + a width-formula proof (`[0,1,0,3] -> [0,33,0,100]`,
+  non-transparent fill); "Ma don Omisell" label; no `al-d-more` + direct
+  `al-d-ignore` -> `Ignored`; Price Setup `FIELDS` excludes the removed fields and
+  `save()` drops `enable_stock_safety_lock`; no Advanced Settings; rules drawer
+  fully removed + inline `saveAll`/`savePf`/`rmPf` present.
+- `node --check` on every page's inline JS: 5/5 JS_OK.
+- Duplicate DOM-id scan: 5/5 NO_DUP.
+- Rule precedence self-test executed in node: PASS (Brand 50 / Platform 60 / SKU 70).
+- RC4-7 generated-page grep proofs on `alert_policies.html`: `rw.high_alert_percent`
+  = 0, `rw.severe_drop_percent` = 0, "High %"/"Severe %" CSV headers = 0,
+  paste-placeholder thresholds = 0.
+- RC4-7 Rules drawer-removal markers on `alert_rules.html` all = 0 (`ru-drawer`,
+  `ru-overlay`, `ru-save`, `ru-cancel`, `r-behaviour`, `r-thr-all`, `openDrawer(`,
+  `openRule`, `fillDrawer`); inline `saveAll` present.
+- RC4-7 business-label render proof on `alert_center.html`: "Thieu cau hinh brand",
+  "Bo qua", and "Ma don Omisell" all present as visible labels.
+
+### Git (owner runs on Windows - NOT done from the sandbox)
+
+The sandbox view of the builder is size-truncated, so the commit must be made on the
+Windows host where the file is complete:
+
+```
+cd C:\dev\ALERT_CENTER
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git status            # confirm NO generated frontend\*.html staged
+git commit -m "Alert UI/UX RC4: remove top-tab nav + compact KPIs; fix SLA bars (display:block); truthful Omisell order label; direct Ignore; Price Setup payload fix + simplified form; inline Rules editing"
+```
+
+**Not merged, not deployed.** Regenerate the git-ignored pages locally after commit:
+`python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend`
+
 ## 14. Stock Safety pass (2026-06-15) - locks page restructure
 
 Scope: `/alerts/locks` (generated `alert_locks.html`) only. Backend untouched:
