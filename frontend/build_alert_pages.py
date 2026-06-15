@@ -169,12 +169,6 @@ SHARED_CSS = """
 .al-bar-fill{height:14px;border-radius:6px;background:var(--navy);min-width:2px}
 .al-bar-fill.warn{background:#c9a200}.al-bar-fill.crit{background:var(--pink)}
 .al-bar-n{width:40px;text-align:right;font-weight:700;color:var(--gray-900)}
-.al-trend{display:flex;align-items:flex-end;gap:5px;height:130px;padding:14px 16px 6px}
-.al-trend-day{flex:1;display:flex;align-items:flex-end;gap:2px;height:100%}
-.al-col{flex:1;border-radius:3px 3px 0 0;background:var(--navy);min-height:2px}
-.al-col.res{background:var(--green)}.al-col.ign{background:var(--gray-300)}
-.al-trend-legend{display:flex;gap:14px;padding:0 16px 12px;font-size:11.5px;color:var(--gray-500)}
-.al-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle}
 .al-csv-ok{color:var(--green);font-weight:700}.al-csv-err{color:var(--pink);font-weight:700}
 .al-banner{margin:0 0 14px;padding:10px 14px;border:1px solid var(--yellow);background:var(--yellow-50);border-radius:10px;font-size:12.5px;color:#8a6d00;font-weight:600}
 .al-note{margin:0 0 12px;padding:8px 12px;border:1px solid var(--gray-200);background:var(--gray-50);border-radius:8px;font-size:12px;color:var(--gray-600);line-height:1.4;display:flex;gap:8px;align-items:flex-start}
@@ -331,23 +325,19 @@ SHARED_CSS = """
 .ecentric-app .al-fchip button:hover{color:var(--pink)}
 .ecentric-app .al-fchip-clear{height:26px;padding:0 10px;font-size:12px}
 /* UI/UX consolidation 2026-06-15: Overview Alert Distribution card + secondary KPI */
-/* RC polish 2026-06-15: concentric-donut distribution (replaces 3 bar columns) */
-.ecentric-app .al-donut-wrap{display:flex;align-items:center;gap:24px;padding:10px 16px 14px;flex-wrap:wrap}
-.ecentric-app .al-donut{flex:0 0 auto;width:210px;height:210px}
-.ecentric-app .al-donut path{cursor:pointer;transition:opacity .12s}
-.ecentric-app .al-donut path[data-noclick]{cursor:default}
-.ecentric-app .al-donut path:hover{opacity:.82}
-.ecentric-app .al-donut path:focus-visible{outline:2px solid var(--navy);outline-offset:1px}
-.ecentric-app .al-donut-legend{flex:1 1 280px;min-width:240px;display:flex;flex-direction:column;gap:12px}
-.ecentric-app .al-dleg-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);margin-bottom:5px}
-.ecentric-app .al-dleg-row{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:6px;cursor:pointer;font-size:12.5px}
-.ecentric-app .al-dleg-row[data-noclick]{cursor:default}
-.ecentric-app .al-dleg-row:hover{background:var(--gray-50)}
-.ecentric-app .al-dleg-row:focus-visible{outline:2px solid var(--navy);outline-offset:1px}
-.ecentric-app .al-dleg-sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
-.ecentric-app .al-dleg-lbl{flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--gray-800)}
-.ecentric-app .al-dleg-n{font-weight:700;color:var(--gray-900)}
-.ecentric-app .al-dleg-pct{color:var(--gray-500);min-width:42px;text-align:right}
+/* ECharts 2026-06-15: Alert Distribution (3 mini donuts) + trend combo */
+.ecentric-app .al-charts3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:8px 12px 12px}
+.ecentric-app .al-chartbox{border:1px solid var(--gray-100);border-radius:10px;padding:6px 6px 2px}
+.ecentric-app .al-chart-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);text-align:center;padding:4px 0 0}
+.ecentric-app .al-chart{width:100%;height:200px}
+.ecentric-app .al-chart-trend{height:240px;padding:0 8px}
+.ecentric-app .al-chart-fb{padding:6px 10px 10px}
+.ecentric-app .al-chart-fbt{width:100%;font-size:12px}
+.ecentric-app .al-chart-fbt td,.ecentric-app .al-chart-fbt th{padding:4px 8px;border-bottom:1px solid var(--gray-100)}
+.ecentric-app .al-chart-fbt .r{text-align:right}
+.ecentric-app .al-chart-days{font-size:12px;color:var(--gray-500);display:inline-flex;align-items:center;gap:6px}
+.ecentric-app .al-chart-days select{height:28px;border:1px solid var(--gray-200);border-radius:6px;font-family:inherit;font-size:12px;padding:0 6px}
+@media (max-width:1100px){.ecentric-app .al-charts3{grid-template-columns:1fr}}
 .ecentric-app .al-help-i{display:inline-flex;align-items:center;justify-content:center;cursor:help;color:var(--gray-400);font-size:12px;margin-left:7px;vertical-align:middle;line-height:1;transition:color .15s}
 .ecentric-app .al-help-i:hover{color:var(--navy)}
 .ecentric-app .al-help-i:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:3px;color:var(--navy)}
@@ -364,7 +354,6 @@ SHARED_CSS = """
 .ecentric-app .al-modesw .al-btn:last-child{border-radius:0 6px 6px 0;border-left:0}
 .ecentric-app .stat-card.kpi-sec{opacity:.85}
 .ecentric-app .stat-card.kpi-sec .stat-value{font-size:21px}
-@media (max-width:1100px){.ecentric-app .al-donut-wrap{justify-content:center}}
 [hidden]{display:none !important}
 @media (max-width:760px){.al-drawer{width:100vw}.al-kv{grid-template-columns:110px 1fr}.al-dash-grid{grid-template-columns:1fr}}
 </style>
@@ -474,6 +463,14 @@ def topbar(crumb):
 
 # ============================== PAGE 1: /alerts ==============================
 PAGE1_CONTENT = """
+  <!-- ERP-wide chart assets (pinned local, NOT a CDN), loaded in dependency
+       order: vendor -> theme -> common -> alert. Palettes/styling/lifecycle and
+       the option construction live in these shared assets, NOT in this builder.
+       If any asset fails to load the page shows a readable table fallback. -->
+  <script src="/assets/ecentric_workspace/charts/vendor/echarts.min.js"></script>
+  <script src="/assets/ecentric_workspace/charts/chart_theme.js"></script>
+  <script src="/assets/ecentric_workspace/charts/chart_common.js"></script>
+  <script src="/assets/ecentric_workspace/charts/alert_charts.js"></script>
   <div class="ec-main">
     %(topbar)s
     %(subnav)s
@@ -511,14 +508,16 @@ PAGE1_CONTENT = """
       </div>
       <div class="panel" id="ov-trend" style="margin-bottom:14px">
         <div class="panel-header"><div><div class="panel-title">%(trend_main)s</div><div class="al-help" style="margin-top:2px">%(trend_basis)s</div></div>
-          <div class="al-trend-legend" style="padding:0"><span><span class="al-dot" style="background:var(--navy)"></span>%(new_l)s</span><span><span class="al-dot" style="background:var(--green)"></span>Resolved</span><span><span class="al-dot" style="background:var(--gray-300)"></span>Ignored</span></div></div>
-        <div class="al-trend" id="dash-trend" style="height:150px"></div>
+          <label class="al-chart-days">%(period_l)s <select id="ov-trend-days"><option value="7">7</option><option value="14" selected>14</option><option value="30">30</option></select></label></div>
+        <div class="al-chart al-chart-trend" id="ec-trend" role="img" aria-label="%(trend_main)s"></div>
+        <div class="al-chart-fb" id="ec-trend-fb" hidden></div>
       </div>
       <div class="al-dash-grid" id="ov-dash">
         <div class="panel" style="grid-column:1 / -1"><div class="panel-header"><div class="panel-title">%(distribution)s</div><span style="font-size:12px;color:var(--gray-500)">%(dist_basis)s</span></div>
-          <div class="al-donut-wrap">
-            <svg class="al-donut" id="ov-donut" viewBox="0 0 200 200" role="img" aria-label="%(distribution)s"></svg>
-            <div class="al-donut-legend" id="ov-donut-legend"></div>
+          <div class="al-charts3">
+            <div class="al-chartbox"><div class="al-chart-h">%(by_brand)s</div><div class="al-chart al-chart-donut" id="ec-brand" role="img" aria-label="%(by_brand)s"></div><div class="al-chart-fb" id="ec-brand-fb" hidden></div></div>
+            <div class="al-chartbox"><div class="al-chart-h">%(by_platform)s</div><div class="al-chart al-chart-donut" id="ec-platform" role="img" aria-label="%(by_platform)s"></div><div class="al-chart-fb" id="ec-platform-fb" hidden></div></div>
+            <div class="al-chartbox"><div class="al-chart-h">%(by_rule)s</div><div class="al-chart al-chart-donut" id="ec-rule" role="img" aria-label="%(by_rule)s"></div><div class="al-chart-fb" id="ec-rule-fb" hidden></div></div>
           </div></div>
         <div class="panel"><div class="panel-header"><div class="panel-title">%(top_sku)s</div></div>
           <div class="al-tbl-wrap"><table class="al-tbl"><thead><tr><th>SKU</th><th>Brand</th><th>%(alerts_n)s</th><th>%(latest)s</th></tr></thead><tbody id="dash-topsku"></tbody></table></div></div>
@@ -598,7 +597,7 @@ PAGE1_CONTENT = """
     "dist_basis": H("Brand (ngoài) · Platform (giữa) · Rule (trong) · cùng mẫu số tổng alert"),
     "alerts_n": H("Số alert"), "latest": H("Gần nhất"),
     "aging": H("SLA - tuổi alert chưa xử lý"), "trend": H("Xu hướng 14 ngày"),
-    "new_l": H("Mới"), "refresh": H("Làm mới"),
+    "new_l": H("Mới"), "refresh": H("Làm mới"), "period_l": H("Khoảng"),
     "actual": H("Giá thực"), "rec": H("Đề xuất"), "detected": H("Lần gần nhất"),
     "recent_crit": H("Cảnh báo nghiêm trọng gần đây"),
     "view_all": H("Xem tất cả alerts"),
@@ -667,65 +666,40 @@ function clearAll(){S.kpi=null;["f-severity","f-status","f-rule_code","f-brand",
 function toggleAdv(){var a=$("al-adv");if(!a)return;var hidden=a.hasAttribute("hidden");if(hidden)a.removeAttribute("hidden");else a.setAttribute("hidden","");var t=$("al-adv-toggle");if(t)t.setAttribute("aria-expanded",hidden?"true":"false");}
 function bars(el,rows,cls){var max=0;rows.forEach(function(r){if(r.n>max)max=r.n;});
 el.innerHTML=rows.length?rows.map(function(r){return '<div class="al-bar-row"><span class="al-bar-key" title="'+A.esc(r.key)+'">'+A.esc(r.key)+'</span><span class="al-bar-track"><span class="al-bar-fill '+(cls||"")+'" style="width:'+Math.max(2,Math.round(r.n*100/(max||1)))+'%%"></span></span><span class="al-bar-n">'+r.n+'</span></div>';}).join(""):'<div class="al-empty">%(no_rows)s</div>';}
-// ---- concentric-donut distribution (no external chart lib; same SVG approach) ----
-// Outer ring = Brand, middle = Platform, inner = Rule. ALL rings use the SAME
-// total (sum of brand rows = total alerts in the filtered window) as denominator,
-// so every percentage is comparable. Top 3 categories + an aggregated "Other".
-var DONUT_PAL=["#27406a","#4f6f9f","#86a0c4","#c8d2e0"]; // navy ramp; Other = lightest (few colours)
-function donutTop3(rows,total){var r=(rows||[]).slice().sort(function(a,b){return b.n-a.n;});
-var top=r.slice(0,3);var used=top.reduce(function(s,x){return s+x.n;},0);
-var other=Math.max(0,total-used);
-var segs=top.map(function(x,i){return {raw:x.key,n:x.n,i:i,other:false};});
-if(other>0)segs.push({raw:null,n:other,i:3,other:true});
-return segs;}
-function donutArc(cx,cy,ro,ri,a0,a1){function p(r,a){var t=(a-90)*Math.PI/180;return [(cx+r*Math.cos(t)).toFixed(2),(cy+r*Math.sin(t)).toFixed(2)];}
-var lg=(a1-a0)>180?1:0;var o0=p(ro,a0),o1=p(ro,a1),i1=p(ri,a0),i0=p(ri,a1);
-return "M"+o0[0]+","+o0[1]+"A"+ro+","+ro+" 0 "+lg+" 1 "+o1[0]+","+o1[1]+"L"+i1[0]+","+i1[1]+"A"+ri+","+ri+" 0 "+lg+" 0 "+i0[0]+","+i0[1]+"Z";}
-function dispOf(dim,raw,other){if(other)return "%(other_l)s";if(raw==null||raw==="")return "%(none_l)s";return dim==="rule"?A.ruleLabel(raw):raw;}
-function loadDonut(f){Promise.all([
-A.call("api_dashboard.by_dimension",{dim:"brand",filters:f}),
-A.call("api_dashboard.by_dimension",{dim:"platform",filters:f}),
-A.call("api_dashboard.by_dimension",{dim:"rule_code",filters:f})
-]).then(function(res){renderDonut({brand:res[0].rows||[],platform:res[1].rows||[],rule:res[2].rows||[]});}).catch(function(){});}
-function renderDonut(data){var svg=$("ov-donut"),leg=$("ov-donut-legend");if(!svg)return;
-var total=data.brand.reduce(function(s,x){return s+x.n;},0);
-var cx=100,cy=100;
-var RINGS=[{dim:"brand",label:"%(by_brand)s",filt:"f-brand",ro:92,ri:71,rows:data.brand},
-{dim:"platform",label:"%(by_platform)s",filt:"f-platform",ro:67,ri:46,rows:data.platform},
-{dim:"rule",label:"%(by_rule)s",filt:"f-rule_code",ro:42,ri:21,rows:data.rule}];
-if(!total){svg.innerHTML='<text x="100" y="104" text-anchor="middle" font-size="12" fill="var(--gray-400)">%(no_rows)s</text>';leg.innerHTML="";return;}
-var paths="",legH="";
-RINGS.forEach(function(R){var segs=donutTop3(R.rows,total);var a=0;
-segs.forEach(function(s){var sweep=s.n/total*360;var a1=a+sweep;var disp=dispOf(R.dim,s.raw,s.other);
-var pct=(s.n*100/total);var pctS=(pct<1?pct.toFixed(1):Math.round(pct))+"%%";
-var fill=DONUT_PAL[s.i];var noclick=(s.other||s.raw==null||s.raw==="")?' data-noclick="1"':"";
-var aria=R.label+", "+disp+", "+s.n+", "+pctS;
-paths+='<path d="'+donutArc(cx,cy,R.ro,R.ri,a,a1)+'" fill="'+fill+'" data-dim="'+R.dim+'" data-filt="'+R.filt+'" data-raw="'+(s.raw==null?"":A.esc(String(s.raw)))+'"'+noclick+' tabindex="0" role="button" aria-label="'+A.esc(aria)+'"><title>'+A.esc(aria)+'</title></path>';
-a=a1;});
-legH+='<div class="al-dleg-group"><div class="al-dleg-h">'+R.label+'</div>'+segs.map(function(s){var disp=dispOf(R.dim,s.raw,s.other);var pct=(s.n*100/total);var pctS=(pct<1?pct.toFixed(1):Math.round(pct))+"%%";var noclick=(s.other||s.raw==null||s.raw==="")?' data-noclick="1"':' tabindex="0" role="button"';
-return '<div class="al-dleg-row" data-dim="'+R.dim+'" data-filt="'+R.filt+'" data-raw="'+(s.raw==null?"":A.esc(String(s.raw)))+'"'+noclick+'><span class="al-dleg-sw" style="background:'+DONUT_PAL[s.i]+'"></span><span class="al-dleg-lbl" title="'+A.esc(disp)+'">'+A.esc(disp)+'</span><span class="al-dleg-n">'+s.n+'</span><span class="al-dleg-pct">'+pctS+'</span></div>';}).join("")+'</div>';});
-var center='<circle cx="100" cy="100" r="20" fill="#fff"/><text x="100" y="97" text-anchor="middle" font-size="20" font-weight="700" fill="var(--gray-900)" id="ov-donut-total">'+total+'</text><text x="100" y="111" text-anchor="middle" font-size="8" fill="var(--gray-500)">%(total_l)s</text>';
-svg.innerHTML=paths+center;leg.innerHTML=legH;}
-function donutClick(t){if(!t||t.getAttribute("data-noclick"))return;var filt=t.getAttribute("data-filt"),raw=t.getAttribute("data-raw");if(!filt||!raw)return;var el=$(filt);if(!el)return;el.value=raw;S.start=0;reload();}
+// ===== Charts: containers + API data + AlertCharts calls ======================
+// Palettes, styling, option construction and the generic chart lifecycle live in
+// the shared ERP assets (ECChartTheme / ECCharts / AlertCharts). This builder
+// only: fetches data, does a MINIMAL page-specific transform, calls AlertCharts,
+// and wires the resulting filter/drill-down callback. If the asset bundle failed
+// to load entirely (no AlertCharts), a minimal page-level table fallback shows.
+var DONUT_FILT={brand:"f-brand",platform:"f-platform",rule:"f-rule_code"};
+function applyDimFilter(filtId,raw){var el=$(filtId);if(el){el.value=raw;S.start=0;reload();}}
+function rawFB(boxId,fbId,html){var b=$(boxId),fb=$(fbId);if(b)b.style.display="none";if(fb){fb.hidden=false;fb.innerHTML=html;}}
+function loadCharts(f){[["brand","ec-brand","ec-brand-fb","%(by_brand)s"],["platform","ec-platform","ec-platform-fb","%(by_platform)s"],["rule_code","ec-rule","ec-rule-fb","%(by_rule)s"]].forEach(function(c){var dim=(c[0]==="rule_code")?"rule":c[0];
+A.call("api_dashboard.by_dimension",{dim:c[0],filters:f}).then(function(r){drawDonut(dim,c[1],c[2],c[3],r.rows||[]);}).catch(function(){drawDonut(dim,c[1],c[2],c[3],[]);});});}
+function drawDonut(dim,boxId,fbId,label,rows){
+if(window.AlertCharts){AlertCharts.renderDistributionDonut($(boxId),dim,rows,{
+label:label,totalLabel:"%(total_l)s",otherLabel:"%(other_l)s",noneLabel:"%(none_l)s",
+labelFor:(dim==="rule")?function(k){return A.ruleLabel(k);}:null,
+fallbackEl:$(fbId),onClick:function(raw){applyDimFilter(DONUT_FILT[dim],raw);}});return;}
+// asset bundle unavailable -> minimal page fallback (top 4 categories)
+var tot=rows.reduce(function(s,x){return s+x.n;},0);
+rawFB(boxId,fbId,tot?('<table class="al-tbl al-chart-fbt"><tbody>'+rows.slice(0,4).map(function(x){return '<tr><td>'+A.esc(dim==="rule"?A.ruleLabel(x.key):(x.key||"%(none_l)s"))+'</td><td class="r"><b>'+x.n+'</b></td></tr>';}).join("")+'</tbody></table>'):'<div class="al-empty">%(no_rows)s</div>');}
+function trendDays(){var el=$("ov-trend-days");return el?(parseInt(el.value,10)||14):14;}
+function loadTrend(f){A.call("api_dashboard.trend",{filters:f,days:trendDays()}).then(function(r){drawTrend(r.rows||[]);}).catch(function(){drawTrend([]);});}
+function drawTrend(rows){
+// TRUTHFUL series only: api_dashboard.trend returns New / Resolved / Ignored per
+// day (no per-day severity split and no historical backlog exist), so none are
+// fabricated. The series/option assembly lives in AlertCharts.renderTrend.
+if(window.AlertCharts){AlertCharts.renderTrend($("ec-trend"),rows,{
+labels:{"new":"%(new_l)s",resolved:"Resolved",ignored:"Ignored",date:"%(date_l)s",title:"%(trend_main)s"},
+fallbackEl:$("ec-trend-fb"),onPointClick:function(day){$("f-preset").value="";$("f-from").value=day;$("f-to").value=day;S.start=0;reload();window.location.hash="al-alert-list";}});return;}
+rawFB("ec-trend","ec-trend-fb",(rows&&rows.length)?('<table class="al-tbl al-chart-fbt"><thead><tr><th>%(date_l)s</th><th class="r">%(new_l)s</th><th class="r">Resolved</th><th class="r">Ignored</th></tr></thead><tbody>'+rows.map(function(d){return '<tr><td>'+A.esc(d.day)+'</td><td class="r">'+d.new+'</td><td class="r">'+d.resolved+'</td><td class="r">'+d.ignored+'</td></tr>';}).join("")+'</tbody></table>'):'<div class="al-empty">%(no_rows)s</div>');}
 function loadDash(){var f=filters();
 A.call("api_dashboard.kpis",{filters:f}).then(function(c){$("al-c-open").textContent=c.open;$("al-c-critical").textContent=c.critical;$("al-c-warning").textContent=c.warning;$("al-c-setup").textContent=(c.setup_issues!=null?c.setup_issues:c.missing_policy);$("al-c-lockrev").textContent=c.lock_pending_review;$("al-c-resolved").textContent=c.resolved;}).catch(function(){});
-loadDonut(f);
+loadCharts(f);loadTrend(f);
 A.call("api_dashboard.top_skus",{filters:f,limit:10}).then(function(r){var tb=$("dash-topsku");tb.innerHTML=r.rows.length?r.rows.map(function(x){return '<tr><td>'+A.esc(x.seller_sku)+'</td><td>'+A.esc(x.brand||"-")+'</td><td><b>'+x.n+'</b></td><td>'+A.esc(A.dt(x.latest))+'</td></tr>';}).join(""):'<tr><td colspan="4" class="al-empty">%(no_rows)s</td></tr>';}).catch(function(){});
-A.call("api_dashboard.aging",{filters:f}).then(function(b){bars($("dash-aging"),[{key:"< 4h",n:b.lt_4h||0},{key:"4-24h",n:b.h4_24||0},{key:"1-3 %(days)s",n:b.d1_3||0},{key:"> 3 %(days)s",n:b.gt_3d||0}],"warn");}).catch(function(){});
-A.call("api_dashboard.trend",{filters:f,days:14}).then(function(r){var max=1;r.rows.forEach(function(d){max=Math.max(max,d.new,d.resolved,d.ignored);});
-$("dash-trend").innerHTML=r.rows.map(function(d){function h(n){return Math.max(2,Math.round(n*100/max));}
-return '<div class="al-trend-day" title="'+A.esc(d.day)+': '+d.new+' / '+d.resolved+' / '+d.ignored+'"><span class="al-col" style="height:'+h(d.new)+'%%"></span><span class="al-col res" style="height:'+h(d.resolved)+'%%"></span><span class="al-col ign" style="height:'+h(d.ignored)+'%%"></span></div>';}).join("");}).catch(function(){});
-A.call("api_dashboard.hourly_trend",{filters:f}).then(function(r){renderHourly(r.rows||[]);}).catch(function(){});}
-function renderHourly(rows){var el=$("dash-hourly");if(!el)return;
-var max=1;rows.forEach(function(r){max=Math.max(max,r.total||0,r.critical||0);});
-var W=480,H=140,pl=22,pr=6,pt=8,pb=18,iw=(W-pl-pr)/24,ih=H-pt-pb;
-function y(v){return (pt+ih-(v*ih/max)).toFixed(1);}
-var bars=rows.map(function(r,i){var x=pl+i*iw;var bh=(r.total||0)*ih/max;return '<rect x="'+(x+1).toFixed(1)+'" y="'+y(r.total||0)+'" width="'+(iw-2).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="var(--navy)" opacity="0.85"><title>'+r.hour+'h: '+(r.total||0)+' alert, '+(r.critical||0)+' critical</title></rect>';}).join("");
-var pts=rows.map(function(r,i){return (pl+i*iw+iw/2).toFixed(1)+","+y(r.critical||0);}).join(" ");
-var line='<polyline points="'+pts+'" fill="none" stroke="var(--pink)" stroke-width="2"/>';
-var dots=rows.map(function(r,i){return '<circle cx="'+(pl+i*iw+iw/2).toFixed(1)+'" cy="'+y(r.critical||0)+'" r="1.6" fill="var(--pink)"/>';}).join("");
-var labs=[0,4,8,12,16,20,23].map(function(hh){return '<text x="'+(pl+hh*iw+iw/2).toFixed(1)+'" y="'+(H-5)+'" font-size="8" fill="var(--gray-500)" text-anchor="middle">'+hh+'</text>';}).join("");
-el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><line x1="'+pl+'" y1="'+(pt+ih).toFixed(1)+'" x2="'+(W-pr)+'" y2="'+(pt+ih).toFixed(1)+'" stroke="var(--gray-200)"/>'+bars+line+dots+labs+'</svg>';}
+A.call("api_dashboard.aging",{filters:f}).then(function(b){bars($("dash-aging"),[{key:"< 4h",n:b.lt_4h||0},{key:"4-24h",n:b.h4_24||0},{key:"1-3 %(days)s",n:b.d1_3||0},{key:"> 3 %(days)s",n:b.gt_3d||0}],"warn");}).catch(function(){});}
 function loadRows(){var tb=$("al-rows");tb.innerHTML='<tr><td colspan="14" class="al-empty">%(loading)s</td></tr>';
 A.call("api_alerts.list_alerts",{filters:listFilters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;S.sel={};syncBulk();
 if(!res.rows.length){tb.innerHTML='<tr><td colspan="14" class="al-empty">%(no_rows)s</td></tr>';}
@@ -818,7 +792,7 @@ function applyHashNav(){
     else if(h.indexOf("#al-alert-list")>=0)a.classList.toggle("active",atList);});
   var ov=$("ov-dash"),rec=$("ov-recent"),note=$("al-snapshot-note"),list=$("al-alert-list"),tr=$("ov-trend");
   if(ov)ov.hidden=atList;if(rec)rec.hidden=atList;if(note)note.hidden=atList;if(list)list.hidden=!atList;if(tr)tr.hidden=atList;
-  if(atList){if(list)list.scrollIntoView({behavior:"smooth",block:"start"});}else{loadRecent();}
+  if(atList){if(list)list.scrollIntoView({behavior:"smooth",block:"start"});}else{loadRecent();setTimeout(function(){if(window.ECCharts)ECCharts.resizeAll();},60);}
 }
 function init(){setDefaultRange();
 A.initScope("/alerts",function(scope){S.scope=scope;
@@ -838,12 +812,10 @@ $("f-preset").onchange=function(){syncPresetDates();S.start=0;reload();};
 $("al-adv-toggle").onclick=toggleAdv;
 $("al-kpis").addEventListener("click",function(ev){var c=ev.target.closest(".stat-card.kpi");if(c)applyKpi(c.getAttribute("data-kpi"));});
 $("al-kpis").addEventListener("keydown",function(ev){if(ev.key!=="Enter"&&ev.key!==" "&&ev.key!=="Spacebar")return;var c=ev.target.closest(".stat-card.kpi");if(c){ev.preventDefault();applyKpi(c.getAttribute("data-kpi"));}});
-function donutDelegate(ev){var t=ev.target.closest("[data-dim][data-filt]");if(t)donutClick(t);}
-function donutKey(ev){if(ev.key!=="Enter"&&ev.key!==" "&&ev.key!=="Spacebar")return;var t=ev.target.closest("[data-dim][data-filt]");if(t){ev.preventDefault();donutClick(t);}}
-$("ov-donut").addEventListener("click",donutDelegate);
-$("ov-donut").addEventListener("keydown",donutKey);
-$("ov-donut-legend").addEventListener("click",donutDelegate);
-$("ov-donut-legend").addEventListener("keydown",donutKey);
+// Charts: one debounced window-resize listener (owned by ECCharts; idempotent);
+// reload only the trend when the 7/14/30-day preset changes.
+if(window.ECCharts)ECCharts.attachResize();
+var _td=$("ov-trend-days");if(_td)_td.onchange=function(){loadTrend(filters());};
 $("al-refresh").onclick=reload;
 $("al-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);loadRows();};
 $("al-next").onclick=function(){S.start+=S.pageLen;loadRows();};
@@ -869,6 +841,8 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
     by_brand=js_escape("Theo brand"), by_platform=js_escape("Theo platform"),
     by_rule=js_escape("Theo rule"), other_l=js_escape("Khác"),
     none_l=js_escape("(không có)"), total_l=js_escape("Tổng alert"),
+    new_l=js_escape("Mới"), trend_main=js_escape("Xu hướng cảnh báo"),
+    date_l=js_escape("Ngày"),
     c_open=js_escape("Đang mở"), c_setup=js_escape("Vấn đề cấu hình"),
     no_crit=js_escape("Không có cảnh báo nghiêm trọng đang mở."),
     kpi_l=js_escape("Thẻ KPI"), search_l=js_escape("Tìm SKU"),
@@ -2168,7 +2142,7 @@ print("[OK] M2c policy-drawer asserts pass")
 p1 = open(os.path.join(OUTDIR, "alert_center.html")).read()
 assert "daysAgo(14)" in p1
 for el in ("dash-topsku", "dash-aging",
-           "dash-trend", "al-rows", "al-subnav", "list_alerts", 'id="al-alert-list"',
+           "al-rows", "al-subnav", "list_alerts", 'id="al-alert-list"',
            "applyHashNav", 'id="al-snapshot-note"',
            # G1.1 Drop 2: bulk + occurrence column + occurrences drawer
            'id="al-bulkbar"', 'id="al-chk-all"', "al-row-chk", "al-occ-n",
@@ -2183,14 +2157,19 @@ for el in ("dash-topsku", "dash-aging",
            # assert below confirms its removal).
            'id="ov-trend"', 'id="al-modesw"', 'id="al-mode-setup"',
            "al-top-row",
-           # RC polish 2026-06-15: concentric-donut distribution (replaces the
-           # 3 horizontal-bar columns / al-dist3). Outer=Brand, middle=Platform,
-           # inner=Rule, center=total; clickable + keyboard; legend with %/count.
-           # (segments + data-dim are built at runtime; the three ring defs and
-           # the donut helpers/containers are literal in the built page.)
-           'id="ov-donut"', 'id="ov-donut-legend"', "loadDonut", "renderDonut",
-           "donutClick", "donutArc", 'data-dim="', 'dim:"brand"',
-           'dim:"platform"', 'dim:"rule"', 'id="ov-donut-total"',
+           # ECharts 2026-06-15 (shared-asset architecture): the 4 pinned chart
+           # assets load in order; the builder only renders containers + fallbacks,
+           # fetches data and calls the shared AlertCharts (palettes/options/
+           # lifecycle live in ECChartTheme / ECCharts / AlertCharts).
+           "/assets/ecentric_workspace/charts/vendor/echarts.min.js",
+           "/assets/ecentric_workspace/charts/chart_theme.js",
+           "/assets/ecentric_workspace/charts/chart_common.js",
+           "/assets/ecentric_workspace/charts/alert_charts.js",
+           'id="ec-brand"', 'id="ec-platform"', 'id="ec-rule"', 'id="ec-trend"',
+           'id="ec-brand-fb"', 'id="ec-platform-fb"', 'id="ec-rule-fb"',
+           'id="ec-trend-fb"', "loadCharts", "loadTrend", "drawDonut", "drawTrend",
+           "applyDimFilter", "AlertCharts.renderDistributionDonut",
+           "AlertCharts.renderTrend", "ECCharts.attachResize", 'id="ov-trend-days"',
            # UX polish 2026-06-10: occ prominence + last_seen + dash for
            # no-price rules + exact SKU search + case pill
            "al-occ-n.multi", "occBadge", "NOPRICE", "pmoney(", "pgap(",
@@ -2210,6 +2189,20 @@ for el in ("dash-topsku", "dash-aging",
            "RULE_LABELS", "ruleCell", "relabelRuleOptions"):
     assert el in p1, "page1 missing " + el
 assert 'id="al-alert-list" hidden' in p1, "Alerts work-queue must be a hidden subview (not on Overview)"
+# ECharts charts: a graceful fallback per chart, click-to-filter/drill-down
+# callbacks wired by the builder, the shared single resize listener, and the
+# trend truthfulness note must all be present.
+assert p1.count("al-chart-fb") >= 4, "each chart needs a table/text fallback container"
+assert "onClick:function(raw){applyDimFilter" in p1, "donut click-to-filter callback must be wired"
+assert "onPointClick:function(day){" in p1, "trend click-to-day drill-down callback must be wired"
+assert "ECCharts.attachResize()" in p1, "charts must use the shared single debounced resize listener"
+assert "TRUTHFUL series only" in p1, "trend truthfulness note must remain in the builder"
+# the builder must NOT hardcode palettes / generic lifecycle / option objects any
+# more (they live in the shared assets) and the obsolete custom SVG must be gone.
+for gone in ('id="ov-donut"', "donutArc", "al-dist3", "al-trend-day",
+             'id="dash-trend"', "renderHourly", "DONUT_PAL", "function ecGet",
+             "function ecResizeAll", 'radius:["54'):
+    assert gone not in p1, "builder must not contain moved/obsolete chart code: " + gone
 # the standalone hourly panel was consolidated into the main trend card.
 assert 'id="dash-hourly"' not in p1, "obsolete standalone hourly panel must be removed"
 assert 'class="panel al-hour-panel"' not in p1, "obsolete al-hour-panel must be removed"

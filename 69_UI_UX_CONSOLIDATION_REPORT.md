@@ -678,3 +678,342 @@ Commit hash: assigned by the owner's Windows commit (the prior pass is HEAD
 ### 16.7 Status
 
 - committed: NO (staged in working tree; command in 16.6) · pushed: NO · merged: NO · deployed: NO
+
+## 17. Adopt Apache ECharts for the charts (2026-06-15)
+
+UAT rejected the hand-made SVG charts. This pass replaces them with Apache
+ECharts: three independent mini-donuts + an interactive combo trend. No API,
+permission, schema or scheduler change. NOT merged, NOT deployed.
+
+### 17.1 ECharts version + asset source
+
+- **Apache ECharts 5.5.1** (Apache-2.0), obtained from the npm registry
+  (`npm pack echarts@5.5.1`, file `package/dist/echarts.min.js`, 1,030,855 bytes,
+  md5 `ef12c5c63df2acdf59f8a86cf0317711`). The Apache license header is retained
+  in the file. NOT a runtime CDN.
+
+### 17.2 Asset path + loading method
+
+- The minified file is vendored into the backend app as a static asset:
+  `ecentric_workspace/ecentric_workspace/public/js/echarts.min.js`, which Frappe
+  serves at **`/assets/ecentric_workspace/js/echarts.min.js`** after `bench build`.
+- The Overview page (`/alerts` only) loads it with a single
+  `<script src="/assets/ecentric_workspace/js/echarts.min.js"></script>` near the
+  top of the page body, so `window.echarts` is defined before the page JS runs.
+  The other four pages do not load it.
+- Because this is a backend/app asset, it lives on its own branch
+  **`feat/alert-ui-echarts-asset`** (the chart code stays on the frontend branch
+  `feat/alert-ui-ux-consolidation`).
+
+### 17.3 Three-donut configuration (Alert Distribution)
+
+The three dimensions are independent, so they are three separate ECharts pie
+(donut) instances side by side in one card — `#ec-brand`, `#ec-platform`,
+`#ec-rule` — NOT one nested ring chart. Each donut:
+
+- uses **its own dimension total** (sum of that dimension's rows) as denominator,
+  drawn in the centre via an ECharts `graphic` text (total + "Total alert");
+- shows **Top 3 + Other** (`top3()` aggregates the remainder into "Other");
+- uses **business labels** (`A.ruleLabel` for rules; raw code only inside the
+  tooltip) — no raw snake_case;
+- has tooltip (name + value + percent), hover emphasis (scale + shadow), a compact
+  scroll legend below, and renders cleanly when one category is 100%;
+- uses a **separate coordinated palette** per dimension: Brand = blue/navy
+  (`#1f3a5f…#c3d4e8`), Platform = teal/cyan (`#0f766e…#bfe9e6`), Rule =
+  amber/coral (`#b45309…#f6dcb8`) — deliberately not one navy ramp;
+- is click-to-filter (see 17.5) and has a per-chart table fallback (17.6).
+
+### 17.4 Trend-series truthfulness
+
+The combo chart (`#ec-trend`) is built ONLY from what `api_dashboard.trend`
+truthfully returns per day: **New (bars), Resolved (line), Ignored (dashed
+line)**. The backend provides no per-day severity split and no historical
+backlog series, so **New Critical / New Warning stacked bars and an Open-Backlog
+line are intentionally NOT shown** (they would be fabricated). A 7/14/30-day
+preset (`#ov-trend-days`) re-queries `trend(days=…)`; axes are labelled, the
+tooltip is axis-triggered, and the legend is clickable (ECharts default). If the
+window allowed it, a small read-only aggregate could later add a truthful
+severity split — but none was added here, keeping APIs unchanged.
+
+### 17.5 Click / drill-down behaviour
+
+- **Donut segment click** → sets the matching filter control (`f-brand` /
+  `f-platform` / `f-rule_code`, raw value) and `reload()`s the whole Overview;
+  "Other"/"(none)" segments are inert.
+- **Trend point click** → sets `f-from = f-to = that day`, clears the preset,
+  `reload()`s and switches to the Alerts subview (`#al-alert-list`) — i.e. opens
+  Alerts filtered to that day.
+- Legends are clickable to toggle series/segments (built-in).
+
+### 17.6 Fallback behaviour
+
+Every chart degrades gracefully when `window.echarts` is unavailable (asset not
+yet deployed or failed to load): `ecOK()` gates rendering and each container has a
+sibling `*-fb` element that shows a readable table (donuts: category / count / %;
+trend: date / New / Resolved / Ignored) or an empty-state line when there is no
+data. So the frontend branch is safe to ship/preview even before the asset branch
+lands — the page shows tables until ECharts is served.
+
+Lifecycle helpers (no leaks, no duplicate instances): `ecGet` (reuse-or-init a
+single instance per container), `ecDispose`/`ecDisposeAll` (dispose before every
+rerender), `ecResizeAll` (wired to `window` resize and re-run when returning to
+the Overview subview). Each `renderDonut` / `loadTrend` disposes its instance
+before `setOption(…, true)` (notMerge).
+
+### 17.7 Removed obsolete custom-SVG code
+
+Deleted: the concentric-donut path generator (`donutArc`, `donutTop3`,
+`renderDonut`-SVG, `donutClick`, `donutDelegate`/`donutKey`), the `#ov-donut`
+SVG + HTML legend, the hand-made sparse-bar trend (`#dash-trend`, `.al-trend*`,
+`.al-col*`, `.al-dot`) and `renderHourly`, plus their CSS. Page-1 asserts for
+those were replaced with asserts for: the ECharts asset `<script src>`, the three
+donut containers + trend container, the four fallback containers, the lifecycle
+helpers (`ecGet`/`ecDispose`/`ecResizeAll`), `loadCharts`/`loadTrend`,
+`DONUT_PAL`, `#ov-trend-days`, `>=2` click handlers, `>=4` fallbacks, the
+resize wiring, the trend-truthfulness note, and negative asserts that every
+obsolete SVG artifact (`#ov-donut`, `donutArc`, `al-dist3`, `al-trend-day`,
+`#dash-trend`, `renderHourly`) is gone.
+
+### 17.8 Validation output
+
+Frontend reconstruction build (sandbox mount truncates the now ~195 KB builder;
+host file complete, tail-assert edits replayed via unique anchors):
+
+```
+py_compile OK
+[OK] built alert_center.html (101102 bytes)
+[OK] built alert_policies.html (99289 bytes)
+[OK] built alert_rules.html (81271 bytes)
+[OK] built alert_locks.html (77446 bytes)
+[OK] built alert_health.html (70423 bytes)
+[OK] M2c policy-drawer asserts pass
+[OK] M2/M2b dashboard asserts pass   (+ ECharts asset, 3 donut + trend containers,
+                                       fallbacks, click handlers, resize, no-SVG negatives)
+[OK] M2d Price Setup contextual-footer asserts pass
+[OK] M3 asserts pass
+[OK] M4 asserts pass
+[OK] G1 integration-health asserts pass
+[OK] module-shell asserts pass
+[OK] UI/UX consolidation nav + terminology asserts pass
+```
+
+Other checks: `node --check` OK on all five pages' inline JS; duplicate-id NONE
+on all five; non-ASCII bytes 0 on all five; style/script tag balance OK;
+dead-control audit NONE unbound (Overview); chart-fallback audit (≥4 `*-fb`
+containers); click-filter audit (2 `.on("click"` handlers, donut + trend);
+resize/dispose audit (`window…resize`→`ecResizeAll`, `ecDispose` before each
+rerender); obsolete-SVG audit (0 occurrences of every removed artifact); no
+merge-conflict markers; no trailing whitespace (git diff --check equivalent);
+secret scan clean; vendored asset md5 verified `ef12c5c6…`; all five
+`frontend/alert_*.html` git-ignored.
+
+### 17.9 Branches, commits, and how to land it (owner, on Windows)
+
+Two repos, two branches. The sandbox cannot commit (the `.git/index.lock` is
+unremovable here and the large builder reads back truncated), so the owner runs:
+
+```powershell
+# 1) Asset repo (backend app) — new branch
+cd C:\dev\ecentric_workspace
+git checkout -b feat/alert-ui-echarts-asset
+git add ecentric_workspace/public/js/echarts.min.js
+git commit -m "Alert UI: add pinned ECharts asset"
+bench build --app ecentric_workspace   # publishes /assets/ecentric_workspace/js/echarts.min.js
+git push -u origin feat/alert-ui-echarts-asset
+
+# 2) Frontend repo — existing branch
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git commit -m "Alert UI: replace custom charts with interactive ECharts"
+git push    # feat/alert-ui-ux-consolidation
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+```
+
+Commit hashes: assigned by the two Windows commits above (the prior frontend HEAD
+is `f38c52a`). The disposable preview `frontend\_preview_echarts.html` and the
+mock `frontend\_preview_polish.html` are untracked helpers (not staged); delete
+anytime.
+
+### 17.10 Status
+
+- ECharts asset vendored: YES (file in place, md5 verified) · committed: NO · pushed: NO
+- frontend chart code: implemented + validated · committed: NO · pushed: NO
+- merged: NO · deployed: NO
+
+## 18. Chart architecture refactor — shared ERP source of truth (2026-06-15)
+
+Section 17's ECharts behaviour was approved, but the implementation kept palettes,
+lifecycle and option construction inside the builder. This pass moves all of that
+into shared, namespaced app assets so charts have one ERP-wide source of truth.
+No API/permission/schema/scheduler change. NOT merged, NOT deployed.
+
+### 18.1 Verified frontend base commit
+
+`git log` confirms the frontend branch `feat/alert-ui-ux-consolidation` HEAD is
+**`22f6315 Alert UI: polish distribution chart and Price Setup actions`** (the
+earlier `f38c52a` is its parent — section 17 mislabelled it; corrected here). All
+of 22f6315 is preserved (see 18.11).
+
+### 18.2 Exact files created / changed
+
+App repo `ecentric_workspace` (branch `feat/alert-ui-echarts-asset`):
+
+- `ecentric_workspace/public/charts/vendor/echarts.min.js` — moved here from the
+  earlier `public/js/` location (md5 unchanged `ef12c5c6…`, never modified).
+- `ecentric_workspace/public/charts/chart_theme.js` — new (`window.ECChartTheme`).
+- `ecentric_workspace/public/charts/chart_common.js` — new (`window.ECCharts`).
+- `ecentric_workspace/public/charts/alert_charts.js` — new (`window.AlertCharts`).
+- `public/js/` removed.
+
+Frontend repo `ALERT_CENTER` (branch `feat/alert-ui-ux-consolidation`):
+
+- `frontend/build_alert_pages.py` — PAGE1 now loads the 4 assets in order and only
+  renders containers/fallbacks, fetches data, does a minimal transform, calls
+  `AlertCharts`, and handles the filter/drill callback; the inline palettes
+  (`DONUT_PAL`), generic lifecycle (`ecGet`/`ecDispose`/`ecResizeAll`/`CHARTS`)
+  and the long donut/trend `setOption` objects were removed; page-1 asserts
+  updated. Other four pages unchanged.
+- `69_UI_UX_CONSOLIDATION_REPORT.md` — this section.
+
+### 18.3 ECharts version + license
+
+Apache **ECharts 5.5.1**, Apache-2.0 (license header retained in the file),
+vendored from npm, served at `/assets/ecentric_workspace/charts/vendor/echarts.min.js`.
+The minified file is byte-for-byte unmodified (md5 `ef12c5c63df2acdf59f8a86cf0317711`).
+
+### 18.4 Theme tokens + palettes (`chart_theme.js` → `window.ECChartTheme`)
+
+- Light + dark token sets (`tokens()` picks by `prefers-color-scheme`): ink,
+  muted, faint, grid, axis, border, surface, surfaceAlt.
+- `semantic`: critical `#db2777`, warning `#d4a017`, ok `#1a8754`, info `#2f6db0`,
+  neutral `#94a3b8`.
+- `palettes`: brand `["#1f3a5f","#2f6db0","#5b9bd5","#c3d4e8"]` (blue/navy),
+  platform `["#0f766e","#14a8a0","#5fd0c8","#bfe9e6"]` (teal/cyan),
+  rule `["#b45309","#ea8b2f","#f4b46b","#f6dcb8"]` (amber/coral), series
+  `["#2f6db0","#0f766e","#94a3b8"]` (New/Resolved/Ignored). Index 3 = "Other".
+- `typography`, `animation` (450ms cubicOut), `empty`, `loading()`, and reusable
+  style fragments `tooltip()/axisLabel()/splitLine()/grid()/legend()/centerText()`.
+  No chart page hardcodes ordinary palettes after this.
+
+### 18.5 Shared lifecycle (`chart_common.js` → `window.ECCharts`)
+
+`ok, ensure, get, dispose, disposeAll, resize, resizeAll, attachResize (single,
+debounced, idempotent), showLoading, hideLoading, setOption (dispose-safe,
+notMerge default), fallback, clearFallback, esc, pct, merge (deep)`. A registry of
+live elements drives `resizeAll`; `ensure` reuses `getInstanceByDom` so a
+container never gets two instances; `attachResize` guards with a bound-flag so only
+one window listener is ever added — preventing duplicate instances, duplicate
+listeners and leaks.
+
+### 18.6 Alert render functions (`alert_charts.js` → `window.AlertCharts`)
+
+- `renderDistributionDonut(el, dimension, rows, options)` — Top 3 + Other against
+  the dimension's own total, business labels via `options.labelFor`, palette via
+  `ECChartTheme.palette(dimension)`, centre total via `ECChartTheme.centerText`,
+  tooltip/legend from theme, disposes before rerender, wires `options.onClick(raw)`
+  (Other/none inert), and renders a table fallback when ECharts is unavailable.
+- `renderTrend(el, rows, options)` — New (bars) / Resolved (line) / Ignored
+  (dashed line) using `ECChartTheme.palette("series")`, axis/grid/legend from
+  theme, wires `options.onPointClick(day)`, table fallback otherwise.
+- It consumes `window.echarts`, `ECChartTheme`, `ECCharts`; it re-implements no
+  generic lifecycle and hardcodes no palette.
+
+### 18.7 Asset loading order (Overview page only)
+
+```html
+<script src="/assets/ecentric_workspace/charts/vendor/echarts.min.js"></script>
+<script src="/assets/ecentric_workspace/charts/chart_theme.js"></script>
+<script src="/assets/ecentric_workspace/charts/chart_common.js"></script>
+<script src="/assets/ecentric_workspace/charts/alert_charts.js"></script>
+```
+
+Pinned local assets, no runtime CDN. Order = vendor → theme → common → alert.
+
+### 18.8 Fallback behaviour (defence in depth)
+
+- If `window.echarts` is missing but the modules loaded: `AlertCharts` renders a
+  per-chart table (donut: category/count/%; trend: date/New/Resolved/Ignored).
+- If the module bundle itself failed to load (no `window.AlertCharts`): the builder
+  renders a minimal page-level table fallback in the same `*-fb` element.
+  Either way the Overview stays readable; the page never blanks.
+
+### 18.9 Data truthfulness (unchanged from the approved behaviour)
+
+Three independent donuts (Brand/Platform/Rule), each its own total, Top 3 + Other,
+theme palettes, business labels, click-to-filter. Trend uses exactly the API's
+New / Resolved / Ignored per day — no fabricated severity-by-day, backlog or
+cumulative series.
+
+### 18.10 Validation output
+
+App assets: `node --check` OK on `chart_theme.js`, `chart_common.js`,
+`alert_charts.js` and `vendor/echarts.min.js`; only the three approved globals are
+assigned (`window.ECChartTheme` / `window.ECCharts` / `window.AlertCharts`); the
+minified asset is unmodified (md5 verified); no secrets, no conflict markers, no
+trailing whitespace.
+
+Frontend (reconstruction build; host file complete, tail asserts replayed via
+unique anchors):
+
+```
+py_compile OK
+[OK] built alert_center.html (98207 bytes)   # smaller: chart code now external
+[OK] built alert_policies.html / alert_rules.html / alert_locks.html / alert_health.html
+[OK] M2c / M2/M2b (+ 4 assets in order, AlertCharts/ECCharts/ECChartTheme wiring,
+     callbacks, fallbacks, negatives: no DONUT_PAL/ecGet/ecResizeAll/inline options)
+[OK] M2d Price Setup contextual-footer asserts pass
+[OK] M3 / M4 / G1 / module-shell / consolidation asserts pass
+```
+
+Other: `node --check` OK on all five pages; duplicate-id NONE; non-ASCII 0;
+tag balance OK; dead-control audit NONE unbound; donut click-to-filter audit
+(`onClick:function(raw){applyDimFilter…`) and trend click-to-day audit
+(`onPointClick:function(day){…`) present; resize/dispose audit
+(`ECCharts.attachResize()` in builder; dispose-before-rerender inside the shared
+module); old-custom-SVG audit (0 occurrences of every removed artifact); generated
+HTML git-ignored; no conflict markers; no trailing whitespace.
+
+### 18.11 Price Setup RC2 (commit 22f6315) preserved
+
+Verified intact in the built `alert_policies.html`: the contextual lifecycle
+footer (`#pl-life`, single secondary button), `refreshFooter`, the status badge
+`#pl-d-status`, the "More → Set to Draft" affordance, and the info-icon spacing
+(`margin-left:7px`). The refactor touched only PAGE1 chart code; PAGE2 (Price
+Setup) was not modified.
+
+### 18.12 Windows commit commands (owner; two repos / two branches)
+
+The sandbox cannot commit (unremovable `.git/index.lock`; the large builder reads
+back truncated), so the owner runs:
+
+```powershell
+# App assets — branch feat/alert-ui-echarts-asset
+cd C:\dev\ecentric_workspace
+git checkout -b feat/alert-ui-echarts-asset   # (or: git checkout feat/alert-ui-echarts-asset)
+git add ecentric_workspace/public/charts/
+node --check ecentric_workspace/public/charts/chart_theme.js
+node --check ecentric_workspace/public/charts/chart_common.js
+node --check ecentric_workspace/public/charts/alert_charts.js
+git commit -m "Alert UI: add shared ECharts assets (theme, common, alert, vendor)"
+bench build --app ecentric_workspace
+git push -u origin feat/alert-ui-echarts-asset
+
+# Frontend — branch feat/alert-ui-ux-consolidation (already on it)
+cd C:\dev\ALERT_CENTER
+python -m py_compile frontend\build_alert_pages.py
+git add frontend\build_alert_pages.py 69_UI_UX_CONSOLIDATION_REPORT.md
+git commit -m "Alert UI: move charts to shared ECharts assets"
+git push
+python frontend\build_alert_pages.py deploy\backups\home_20260608_154510\main_section_html.bak.html frontend
+```
+
+The untracked previews `frontend\_preview_echarts.html` (now loads the 4 shared
+assets) and `frontend\_preview_polish.html` are disposable; not staged.
+
+### 18.13 Status
+
+- app assets created + validated · committed: NO · pushed: NO
+- builder refactored + validated · committed: NO · pushed: NO
+- Price Setup RC2 (22f6315) preserved: YES
+- merged: NO · deployed: NO
