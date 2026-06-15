@@ -500,7 +500,7 @@ PAGE1_CONTENT = """
           <button class="al-btn" id="al-refresh">%(refresh)s</button></div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
-            <thead><tr><th class="al-chk-col"><input type="checkbox" id="al-chk-all" title="%(sel_all)s"></th><th>Severity</th><th>Status</th><th>Rule</th><th>%(occ)s</th><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(actual)s</th><th>Min</th><th>Baseline</th><th>Gap</th><th>%(rec)s</th><th>Owner</th><th>%(detected)s</th><th>Action</th></tr></thead>
+            <thead><tr><th class="al-chk-col"><input type="checkbox" id="al-chk-all" title="%(sel_all)s"></th><th>%(detected)s</th><th>Severity</th><th>Status</th><th>Rule</th><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(actual)s</th><th>%(minref)s</th><th>Gap</th><th>%(rec)s</th><th>Owner</th></tr></thead>
             <tbody id="al-rows"></tbody>
           </table>
         </div>
@@ -512,7 +512,7 @@ PAGE1_CONTENT = """
 <div class="al-overlay" id="al-overlay" hidden></div>
 <div class="al-modal al-modal-xl" id="al-drawer" hidden>
   <div class="al-modal-head"><div><strong id="al-d-title"></strong><div class="al-d-sub" id="al-d-sub"></div></div><button class="al-btn" id="al-d-close">&#10005;</button></div>
-  <div class="al-modal-body"><dl class="al-kv al-kv-wide" id="al-d-kv"></dl><div id="al-d-occ"></div><div id="al-d-acts"></div></div>
+  <div class="al-modal-body"><div id="al-d-kv"></div><div id="al-d-occ"></div><div id="al-d-acts"></div></div>
   <div class="al-modal-foot">
     <button class="al-btn" id="al-d-review">%(review)s</button>
     <button class="al-btn primary" id="al-d-resolve">Resolve</button>
@@ -563,6 +563,7 @@ PAGE1_CONTENT = """
     "recent_crit": H("Cảnh báo nghiêm trọng gần đây"),
     "view_all": H("Xem tất cả alerts"),
     "mode_op": H("Operational"), "mode_setup": H("Setup Issues"),
+    "minref": H("Min / Ref"),
     "review": H("Nhận xử lý"), "pause": H("Tạm dừng tự động"),
     "selected": H("đã chọn:"), "sel_all": H("Chọn tất cả trong trang"),
     "occ": H("Số đơn vi phạm"),
@@ -645,18 +646,18 @@ var line='<polyline points="'+pts+'" fill="none" stroke="var(--pink)" stroke-wid
 var dots=rows.map(function(r,i){return '<circle cx="'+(pl+i*iw+iw/2).toFixed(1)+'" cy="'+y(r.critical||0)+'" r="1.6" fill="var(--pink)"/>';}).join("");
 var labs=[0,4,8,12,16,20,23].map(function(hh){return '<text x="'+(pl+hh*iw+iw/2).toFixed(1)+'" y="'+(H-5)+'" font-size="8" fill="var(--gray-500)" text-anchor="middle">'+hh+'</text>';}).join("");
 el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><line x1="'+pl+'" y1="'+(pt+ih).toFixed(1)+'" x2="'+(W-pr)+'" y2="'+(pt+ih).toFixed(1)+'" stroke="var(--gray-200)"/>'+bars+line+dots+labs+'</svg>';}
-function loadRows(){var tb=$("al-rows");tb.innerHTML='<tr><td colspan="17" class="al-empty">%(loading)s</td></tr>';
+function loadRows(){var tb=$("al-rows");tb.innerHTML='<tr><td colspan="14" class="al-empty">%(loading)s</td></tr>';
 A.call("api_alerts.list_alerts",{filters:listFilters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;S.sel={};syncBulk();
-if(!res.rows.length){tb.innerHTML='<tr><td colspan="17" class="al-empty">%(no_rows)s</td></tr>';}
+if(!res.rows.length){tb.innerHTML='<tr><td colspan="14" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
 '<td class="al-chk-col"><input type="checkbox" class="al-row-chk" data-name="'+A.esc(r.name)+'"></td>'+
+'<td>'+A.esc(A.dt(r.last_seen_at||r.detected_at))+'</td>'+
 '<td>'+A.sevBadge(r.severity)+'</td><td>'+A.stBadge(r.status)+'</td><td>'+A.ruleCell(r.rule_code)+'</td>'+
-'<td>'+occBadge(r.occurrence_count)+'</td>'+
 '<td>'+A.esc(r.brand||"-")+'</td><td>'+A.esc(r.platform||"-")+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+'</td>'+
-'<td>'+pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)+'</td><td>'+pmoney(r,r.min_price)+'</td><td>'+pmoney(r,r.baseline_price)+'</td><td>'+pgap(r)+'</td>'+
-'<td>'+A.esc(r.recommended_action||"-")+'</td><td>'+A.esc(r.owner_user||"-")+'</td><td>'+A.esc(A.dt(r.last_seen_at||r.detected_at))+'</td><td>'+A.actBadge(r.action_status)+'</td></tr>';}).join("");}
+'<td>'+pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)+'</td><td>'+pmoney(r,r.min_price)+'</td><td>'+pgap(r)+'</td>'+
+'<td>'+A.esc(r.recommended_action||"-")+'</td><td>'+A.esc(r.owner_user||"-")+'</td></tr>';}).join("");}
 $("al-chk-all").checked=false;
-var from=S.total?S.start+1:0;$("al-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;$("al-prev").disabled=S.start<=0;$("al-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="17" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
+var from=S.total?S.start+1:0;$("al-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;$("al-prev").disabled=S.start<=0;$("al-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="14" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
 function syncBulk(){var n=Object.keys(S.sel||{}).length;$("al-bulk-n").textContent=n;$("al-bulkbar").hidden=(n===0);}
 function bulkStatus(status){var names=Object.keys(S.sel||{});if(!names.length)return;
 var note=null;if(status!=="In Review"){note=window.prompt("%(bulk_note)s");if(note===null)return;if(!note.trim()){A.toast("%(note_required)s");return;}}
@@ -665,8 +666,12 @@ function reload(){loadDash();loadRows();renderChips();}
 function openDrawer(r){S.current=r;S.occ=[];$("al-d-title").textContent=r.name;
 var occn=r.occurrence_count||0;
 $("al-d-sub").innerHTML=A.stBadge(r.status)+' &middot; '+A.esc(r.seller_sku||r.item||"-")+' &middot; '+A.ruleCell(r.rule_code)+' '+A.sevBadge(r.severity)+(occn>1?' <span class="al-case-pill">'+occn+' %(case_pill)s</span>':'');
-var kv=[["Severity",A.sevBadge(r.severity)],["Status",A.stBadge(r.status)],["Rule",A.ruleCell(r.rule_code)],["Title",A.esc(r.title)],["Brand",A.esc(r.brand||"-")],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(c_eff)s",pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)],["%(c_comp)s",A.esc(r.price_components_used||"-")],["Min",pmoney(r,r.min_price)],["Baseline",pmoney(r,r.baseline_price)],["Gap",pgap(r)],["%(c_occ)s",occBadge(occn)],["Owner",A.esc(r.owner_user||"-")],["%(c_first)s",A.esc(A.dt(r.first_seen_at||r.detected_at))],["%(c_last)s",A.esc(A.dt(r.last_seen_at||r.detected_at))],["Action",A.actBadge(r.action_status)]];
-$("al-d-kv").innerHTML=kv.map(function(p){return "<dt>"+p[0]+"</dt><dd>"+p[1]+"</dd>";}).join("");
+function kvdl(rows){return '<dl class="al-kv al-kv-wide">'+rows.map(function(p){return "<dt>"+p[0]+"</dt><dd>"+p[1]+"</dd>";}).join("")+'</dl>';}
+var dSummary=[["Rule",A.ruleCell(r.rule_code)],["Severity",A.sevBadge(r.severity)],["Status",A.stBadge(r.status)],["%(c_rec)s",A.esc(r.recommended_action||"-")]];
+var dEvidence=[["%(c_eff)s",pmoney(r,r.effective_check_price!=null?r.effective_check_price:r.actual_price)],["Min",pmoney(r,r.min_price)],["%(c_ref)s",pmoney(r,r.baseline_price)],["%(c_comp)s",A.esc(r.price_components_used||"-")],["Gap",pgap(r)]];
+var dScope=[["Brand",A.esc(r.brand||"-")],["Platform",A.esc(r.platform||"-")],["Shop",A.esc(r.shop||"-")],["SKU",A.esc(r.seller_sku||r.item||"-")],["%(c_title)s",A.esc(r.title)]];
+var dTech=[["%(c_rawrule)s",A.esc(r.rule_code)],["Ref doctype",A.esc(r.reference_doctype||"-")],["Ref name",A.esc(r.reference_name||"-")],["Owner",A.esc(r.owner_user||"-")],["%(c_occ)s",occBadge(occn)],["%(c_first)s",A.esc(A.dt(r.first_seen_at||r.detected_at))],["%(c_last)s",A.esc(A.dt(r.last_seen_at||r.detected_at))],["Action",A.actBadge(r.action_status)]];
+$("al-d-kv").innerHTML='<div class="al-fsec">%(s_summary)s</div>'+kvdl(dSummary)+'<div class="al-fsec">%(s_evi)s</div>'+kvdl(dEvidence)+'<div class="al-fsec">%(s_scope3)s</div>'+kvdl(dScope)+'<details class="al-tech"><summary class="al-fsec" style="cursor:pointer">%(s_tech)s</summary>'+kvdl(dTech)+'</details>';
 var srcb=$("al-d-source");if(r.reference_doctype==="EC Marketplace Order Log"&&r.reference_name){srcb.hidden=false;srcb.onclick=function(){window.open("/app/ec-marketplace-order-log/"+encodeURIComponent(r.reference_name),"_blank");};}else{srcb.hidden=true;}
 $("al-d-occ").innerHTML='<div class="al-help">%(loading)s</div>';
 A.call("api_alerts.alert_occurrences",{alert:r.name,page_len:50}).then(function(res){renderOcc(res.rows||[],res.total||0);}).catch(function(e){$("al-d-occ").innerHTML='<div class="al-help">%(err)s'+A.esc(e.message)+'</div>';});
@@ -783,6 +788,10 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
     bulk_done=js_escape("Đã cập nhật"),
     c_eff=js_escape("Giá check"), c_comp=js_escape("Thành phần giá"), c_occ=js_escape("Số đơn vi phạm"),
     c_first=js_escape("Phát hiện đầu"), c_last=js_escape("Lần gần nhất"),
+    c_rec=js_escape("Đề xuất xử lý"), c_ref=js_escape("Baseline / Reference"),
+    c_title=js_escape("Tiêu đề"), c_rawrule=js_escape("Rule code (raw)"),
+    s_summary=js_escape("Tóm tắt"), s_evi=js_escape("Bằng chứng giá"),
+    s_scope3=js_escape("Phạm vi"), s_tech=js_escape("Chi tiết kỹ thuật"),
     case_pill=js_escape("đơn vi phạm"),
     s_breakdown=js_escape("Cách tính giá check"), s_evidence=js_escape("Bằng chứng theo đơn"),
     no_occ=js_escape("Chưa có occurrence cho case này."),
