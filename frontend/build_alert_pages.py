@@ -366,20 +366,38 @@ SHARED_CSS = """
 .ecentric-app .al-tierleg:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:4px}
 .ecentric-app .ru-brand{margin-bottom:14px;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden}
 .ecentric-app .ru-brand-h{font-size:13px;font-weight:700;color:var(--gray-900);padding:8px 14px;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
-/* E2 brand-card behaviour editor */
-.ecentric-app .ru-beh{padding:8px 0;border-bottom:1px solid var(--gray-100)}
+/* RC5-5 brand-card behaviour editor: FULL-WIDTH grid (no empty right gutter). */
+.ecentric-app .ru-brand-body{padding:6px 14px 10px}
+.ecentric-app .ru-beh{padding:10px 0;border-bottom:1px solid var(--gray-100)}
 .ecentric-app .ru-beh:last-child{border-bottom:0}
-.ecentric-app .ru-beh-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
-.ecentric-app .ru-beh-h{font-weight:700;font-size:13px;min-width:160px;color:var(--gray-900)}
-.ecentric-app .ru-beh-all{display:flex;align-items:center;gap:8px;font-size:13px}
-.ecentric-app .ru-pf{display:inline-block;min-width:96px;font-size:12px;color:var(--gray-500)}
+/* behaviour header row: name | All-platforms cell, stretched across the card. */
+.ecentric-app .ru-beh-head{display:grid;grid-template-columns:minmax(150px,1fr) minmax(260px,2.4fr);gap:10px 18px;align-items:center;width:100%}
+.ecentric-app .ru-beh-h{font-weight:700;font-size:13px;color:var(--gray-900)}
+.ecentric-app .ru-beh-all{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+.ecentric-app .ru-pf{font-size:12px;color:var(--gray-500)}
 .ecentric-app .ru-pf-all{font-weight:600;color:var(--gray-700)}
-.ecentric-app .ru-ovrow{display:flex;align-items:center;gap:8px;padding:3px 0 3px 8px;font-size:12.5px;flex-wrap:wrap}
+.ecentric-app .ru-ovrows{width:100%}
+/* platform override row: Platform | value/input | actions - full width, aligned. */
+.ecentric-app .ru-ovrow{display:grid;grid-template-columns:92px minmax(150px,1fr) auto;gap:10px;align-items:center;padding:4px 0 4px 8px;font-size:12.5px;width:100%}
+.ecentric-app .ru-mid{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ecentric-app .ru-acts{display:flex;gap:6px;justify-self:end}
+.ecentric-app .ru-mini{padding:3px 9px;font-size:12px}
 .ecentric-app .ru-inh{color:var(--gray-400);font-style:italic}
+.ecentric-app .ru-inh-val{color:var(--gray-500);font-style:italic}
 /* RC4-6 inline rule editor: compact numeric inputs sit inside the brand card. */
 .ecentric-app .ru-i-all,.ecentric-app .ru-i-pf{width:84px;padding:4px 6px;border:1px solid var(--gray-300);border-radius:6px;font-size:12.5px;text-align:right}
 .ecentric-app .ru-i-all:focus,.ecentric-app .ru-i-pf:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 2px rgba(20,40,80,.12)}
 .ecentric-app .ru-unit{font-size:12px;color:var(--gray-500);margin-left:-4px}
+/* RC5-2 Price Setup status switch (table). ON == Active. */
+.ecentric-app .al-switch{position:relative;display:inline-block;width:34px;height:18px;vertical-align:middle}
+.ecentric-app .al-switch input{opacity:0;width:0;height:0;position:absolute}
+.ecentric-app .al-switch .al-switch-sl{position:absolute;inset:0;background:var(--gray-300);border-radius:999px;transition:background .15s;cursor:pointer}
+.ecentric-app .al-switch .al-switch-sl:before{content:"";position:absolute;height:14px;width:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.ecentric-app .al-switch input:checked + .al-switch-sl{background:var(--green)}
+.ecentric-app .al-switch input:checked + .al-switch-sl:before{transform:translateX(16px)}
+.ecentric-app .al-switch input:disabled + .al-switch-sl{cursor:not-allowed;opacity:.5}
+.ecentric-app .al-switch-tx{font-size:12px;color:var(--gray-600);margin-left:6px;vertical-align:middle}
+.ecentric-app .al-legacy-ro{padding:6px 8px;background:var(--gray-50);border:1px dashed var(--gray-300);border-radius:6px;font-size:12.5px;color:var(--gray-600)}
 .ecentric-app .ru-cust{margin:4px 0 0 8px;border-top:0;padding-top:0}
 .ecentric-app .ru-cust .al-btn{height:26px;font-size:12px;padding:0 8px}
 .ecentric-app .al-adv-sec{margin-top:14px;border-top:1px solid var(--gray-200);padding-top:6px}
@@ -954,7 +972,7 @@ PAGE2_CONTENT = """
         </div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
-            <thead><tr><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(product)s</th><th>Min</th><th>Target/RSP</th><th>Ref</th><th>Status</th><th>Owner</th><th>%(effective)s</th></tr></thead>
+            <thead><tr><th>Brand</th><th>%(status_l)s</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(product)s</th><th>Min</th><th>Target/RSP</th><th>Ref</th><th>Owner</th><th>%(effective)s</th></tr></thead>
             <tbody id="pl-rows"></tbody>
           </table>
         </div>
@@ -971,7 +989,12 @@ PAGE2_CONTENT = """
     <div class="al-fgrid">
       <div class="al-fld"><label>Brand <span class="al-req">*</span></label><select id="e-brand"></select></div>
       <div class="al-fld"><label>Platform <span class="al-req">*</span></label><select id="e-platform"><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
-      <div class="al-fld al-col2"><label>Shop <span class="al-opt">(%(optional)s)</span><span class="al-help-i" data-help="price_setup.shop" title="%(h_shop)s" tabindex="0" role="img" aria-label="%(h_shop)s">&#9432;</span></label><input id="e-shop" type="text" placeholder="EC Marketplace Shop"></div>
+      <!-- RC5-3: Shop is removed from the normal KAM flow (scope = Brand / Platform /
+           Seller SKU). The stored value is PRESERVED (kept in a hidden input + never
+           re-submitted, so a legacy shop-specific policy is not silently cleared) and
+           surfaced read-only below only when the edited policy actually has one. -->
+      <input id="e-shop" type="hidden">
+      <div class="al-fld al-col2" id="e-shop-legacy" hidden><label>%(legacy_shop_l)s</label><div class="al-legacy-ro" id="e-shop-legacy-val">-</div></div>
       <div class="al-fld al-col2"><label>Seller SKU <span class="al-req">*</span><span class="al-help-i" data-help="price_setup.seller_sku" title="%(h_sku)s" tabindex="0" role="img" aria-label="%(h_sku)s">&#9432;</span></label>
         <div class="al-inline"><input id="e-seller_sku" type="text"><button type="button" class="al-btn" id="e-sku-search">%(sku_btn)s</button></div></div>
       <!-- C1: ERP Item is hidden from the normal KAM workflow. Seller SKU is the
@@ -1003,13 +1026,11 @@ PAGE2_CONTENT = """
          entirely (no business field remained). Policy status shows in the head badge. -->
     <input id="e-owner_user" type="hidden">
   </div>
+  <!-- RC5-2: lifecycle (Activate/Pause) is no longer here - it lives as a Status
+       switch in the Price Setup table. The drawer only edits fields + Save/Cancel. -->
   <div class="al-drawer-actions">
     <button class="al-btn primary" id="pl-save">%(save)s</button>
-    <button class="al-btn" id="pl-life" hidden></button>
-    <div class="al-more" id="pl-more-wrap" hidden>
-      <button class="al-btn" id="pl-more" aria-haspopup="true" aria-expanded="false">%(more_l)s</button>
-      <div class="al-more-menu" id="pl-more-menu" hidden><button class="al-btn" id="pl-st-draft">%(to_draft_l)s</button></div>
-    </div>
+    <button class="al-btn" id="pl-cancel">%(cancel)s</button>
   </div>
 </div>
 <div class="al-modal wide" id="pl-csv-modal" hidden>
@@ -1073,6 +1094,10 @@ PAGE2_CONTENT = """
     "enable_lock": H("Tạo đề xuất Stock Safety Lock dry-run khi vi phạm nghiêm trọng"),
     "eff_from": H("Hiệu lực từ"), "eff_to": H("Đến"), "save": H("Lưu"),
     "more_l": H("Thêm"), "to_draft_l": H("Chuyển về Draft"),
+    # RC5-2 status switch + RC5-3 legacy shop labels
+    "status_l": H("Trạng thái"), "st_active_l": H("Đang bật"),
+    "st_paused_l": H("Tạm dừng"), "st_draft_l": H("Nháp"),
+    "legacy_shop_l": H("Shop (dữ liệu cũ — chỉ đọc)"),
     "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Số tiền chấp nhận 5000000 / 5,000,000 / 5.000.000."),
     "preview": H("Kiểm tra (preview)"), "errors": H("Lỗi"),
     "errbox_ph": H("Lỗi sẽ hiện ở đây để copy..."),
@@ -1136,22 +1161,32 @@ return (S.caps&&S.caps[brand])||{can_manage:false,can_activate:false};}
 function loadCaps(){return A.call("api_policies.policy_caps",{}).then(function(r){
 S.capsAll=!!r.all_brands;S.caps=r.caps||{};
 $("pl-new").disabled=!(S.capsAll||Object.keys(S.caps).some(function(b){return S.caps[b].can_manage;}));}).catch(function(){});}
-// applyCaps now just refreshes the contextual footer (caps are read inside).
+// applyCaps refreshes Save enablement (lifecycle moved to the table, RC5-2).
 function applyCaps(brand){refreshFooter();}
-// Contextual lifecycle footer: at most TWO visible lifecycle buttons, chosen by
-// the record's CURRENT status. No arrow glyphs. "Set to Draft" (a real backend
-// transition) lives under a small More menu for Active/Paused records only.
 function curStatus(){return (S.current&&S.current.status)||"Draft";}
-function refreshFooter(){var c=cap($("e-brand").value);var st=curStatus();
-var life=$("pl-life"),mw=$("pl-more-wrap");
+// RC5-2: the drawer has NO lifecycle buttons anymore; refreshFooter only gates the
+// Save button by the brand edit capability.
+function refreshFooter(){var c=cap($("e-brand").value);
 $("pl-save").disabled=!c.can_manage;
-$("pl-save").textContent=(!S.current||st==="Draft")?"%(save)s":"%(save_changes)s";
-$("pl-more-menu").hidden=true;if($("pl-more"))$("pl-more").setAttribute("aria-expanded","false");
-if(!S.current){life.hidden=true;mw.hidden=true;$("pl-st-draft").disabled=!c.can_manage;return;}
-if(st==="Active"){life.hidden=false;life.textContent="%(pause_l)s";life.setAttribute("data-to","Paused");life.disabled=!c.can_manage;mw.hidden=false;}
-else if(st==="Paused"){life.hidden=false;life.textContent="%(resume_l)s";life.setAttribute("data-to","Active");life.disabled=!c.can_activate;life.title=c.can_activate?"":"%(no_activate)s";mw.hidden=false;}
-else{life.hidden=false;life.textContent="%(activate_l)s";life.setAttribute("data-to","Active");life.disabled=!c.can_activate;life.title=c.can_activate?"":"%(no_activate)s";mw.hidden=true;}
-$("pl-st-draft").disabled=!c.can_manage;}
+$("pl-save").textContent=(!S.current||curStatus()==="Draft")?"%(save)s":"%(save_changes)s";}
+// RC5-2: per-row Status SWITCH in the Price Setup table. ON == Active. The switch
+// reflects BACKEND TRUTH ONLY: a user flip is snapped back to the current truth and
+// disabled, the transition is attempted, and ONLY a successful reload renders the
+// new state. A conflict / validation failure keeps the prior status and shows the
+// exact business error. Turning ON (Activate) needs activate rights; turning OFF
+// (Pause) needs manage rights.
+function statusLabel(st){return {Active:"%(st_active_l)s",Paused:"%(st_paused_l)s",Draft:"%(st_draft_l)s"}[st]||A.esc(st||"-");}
+function statusToggle(r){var on=(r.status==="Active");var c=cap(r.brand);
+var canFlip=on?c.can_manage:c.can_activate;
+return '<label class="al-switch'+(canFlip?'':' al-switch-dis')+'" title="'+A.esc(r.status||"")+'">'+
+  '<input type="checkbox" class="pl-tog" data-name="'+A.esc(r.name)+'" data-status="'+A.esc(r.status||"Draft")+'"'+(on?' checked':'')+(canFlip?'':' disabled')+'>'+
+  '<span class="al-switch-sl"></span></label> <span class="al-switch-tx">'+statusLabel(r.status)+'</span>';}
+function togglePolicyStatus(cb){var name=cb.getAttribute("data-name"),cur=cb.getAttribute("data-status");
+var next=cb.checked?"Active":"Paused";
+cb.checked=(cur==="Active");cb.disabled=true;   // show truth until backend confirms
+A.call("api_policies.set_policy_status",{name:name,status:next}).then(function(){
+  A.toast("%(saved)s");load();loadMissing();loadCoverageSummary();
+}).catch(function(e){cb.disabled=false;A.toast(e.message);});}
 // ----- per-brand missing-policy summary (unknown/not-loaded -> '-', confirmed 0 -> '0') -----
 function loadMissing(){var box=$("pl-missing-rows");
 A.call("api_policies.missing_policy_summary",{}).then(function(res){S.missingLoaded=true;var sum=res.summary||{};
@@ -1209,9 +1244,11 @@ function load(){var tb=$("pl-rows");tb.innerHTML='<tr><td colspan="11" class="al
 A.call("api_policies.list_policies",{filters:filters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;
 if(!res.rows.length){tb.innerHTML='<tr><td colspan="11" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
-'<td>'+A.esc(r.brand)+' '+polScope(r)+'</td><td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
+'<td>'+A.esc(r.brand)+' '+polScope(r)+'</td>'+
+'<td>'+statusToggle(r)+'</td>'+
+'<td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
 '<td>'+A.money(r.min_price)+'</td><td>'+A.money(r.target_price)+'</td><td>'+A.money(r.reference_price)+'</td>'+
-'<td>'+A.polBadge(r.status)+'</td><td>'+A.esc(r.owner_user||"-")+'</td><td>'+A.esc((r.effective_from||"")+(r.effective_to?(" \\u2192 "+r.effective_to):""))+'</td></tr>';}).join("");loadConflicts(res.rows);}
+'<td>'+A.esc(r.owner_user||"-")+'</td><td>'+A.esc((r.effective_from||"")+(r.effective_to?(" \\u2192 "+r.effective_to):""))+'</td></tr>';}).join("");loadConflicts(res.rows);}
 var from=S.total?S.start+1:0;$("pl-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;
 $("pl-prev").disabled=S.start<=0;$("pl-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="11" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
 // RC4-5: only safe business facts are submitted. The Rules-owned thresholds
@@ -1219,13 +1256,19 @@ $("pl-prev").disabled=S.start<=0;$("pl-next").disabled=S.start+S.pageLen>=S.tota
 // Item are intentionally NOT in this list, so save() never sends them (legacy
 // values are preserved untouched). ERP Item is mirrored separately for the scope
 // preview only.
-var FIELDS=["platform","shop","seller_sku","product_name","min_price","reference_price","target_price","owner_user"];
+// RC5-3: "shop" is NOT submitted (removed from the normal flow). A legacy shop is
+// preserved because save() never sends the field, so the backend keeps the stored
+// value. e-shop is mirrored separately (hidden) for the live scope preview.
+var FIELDS=["platform","seller_sku","product_name","min_price","reference_price","target_price","owner_user"];
 function openDrawer(r){S.current=r||null;
 $("pl-d-title").textContent=r?r.name:"New Policy";
 A.fillBrandSelect($("e-brand"),S.scope,{extra:(r&&r.brand)||null,value:(r&&r.brand)||null});
 FIELDS.forEach(function(k){var el=$("e-"+k);if(el)el.value=(r&&r[k]!=null)?r[k]:"";});
-// ERP Item kept only for the scope preview (hidden, never submitted).
+// ERP Item + legacy Shop kept only for the scope preview / read-only display
+// (hidden, never submitted -> the stored values are preserved untouched).
 var it=$("e-item");if(it)it.value=(r&&r.item!=null)?r.item:"";
+var sh=$("e-shop");if(sh)sh.value=(r&&r.shop!=null)?r.shop:"";
+var lg=$("e-shop-legacy");if(lg){var has=!!(r&&r.shop);lg.hidden=!has;if(has)$("e-shop-legacy-val").textContent=r.shop;}
 $("pl-d-status").innerHTML=A.polBadge(curStatus());
 applyCaps($("e-brand").value);
 updateScopePreview();applyFieldHelp($("pl-drawer"));
@@ -1245,9 +1288,8 @@ function closeDrawer(){$("al-overlay").hidden=true;$("pl-drawer").hidden=true;}
 function save(){var data={brand:$("e-brand").value};
 FIELDS.forEach(function(k){var v=$("e-"+k).value;if(v!=="")data[k]=v;});
 A.call("api_policies.save_policy",{policy:data,name:S.current?S.current.name:null}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();loadCoverageSummary();}).catch(function(e){A.toast("%(err)s"+e.message);});}
-function setStatus(st){if(!S.current){A.toast("Save first");return;}
-if(st==="Active"){var miss=[];["min_price"].forEach(function(k){var el=$("e-"+k);if(el&&!el.value)miss.push(k);});if(miss.length){A.toast("%(warn_active)s"+miss.join(", "));}}
-A.call("api_policies.set_policy_status",{name:S.current.name,status:st}).then(function(res){showLifecycle("%(saved)s",res);closeDrawer();load();loadMissing();loadCoverageSummary();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+// RC5-2: drawer-driven setStatus is gone; status transitions are driven by the
+// per-row table switch (togglePolicyStatus -> api_policies.set_policy_status).
 function dlTemplate(){A.call("api_policies.csv_template").then(function(t){
 var a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(t.content);a.download=t.filename;document.body.appendChild(a);a.click();a.remove();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function openCsv(){$("csv-file").value="";$("csv-paste").value="";$("csv-rows").innerHTML="";$("csv-stats").textContent="";$("csv-summary").textContent="";$("csv-errbox").value="";$("csv-result").innerHTML="";$("csv-import").disabled=true;S.prev=null;S.prevContent=null;
@@ -1324,7 +1366,7 @@ $("pl-cov-kpis").addEventListener("keydown",function(ev){if((ev.key==="Enter"||e
 $("pl-apply").onclick=function(){S.start=0;load();};
 $("pl-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);load();};
 $("pl-next").onclick=function(){S.start+=S.pageLen;load();};
-$("pl-rows").addEventListener("click",function(ev){var tr=ev.target.closest("tr[data-i]");if(tr)openDrawer(S.rows[+tr.getAttribute("data-i")]);});
+$("pl-rows").addEventListener("click",function(ev){if(ev.target.closest(".al-switch"))return;var tr=ev.target.closest("tr[data-i]");if(tr)openDrawer(S.rows[+tr.getAttribute("data-i")]);});
 $("pl-new").onclick=function(){openDrawer(null);};
 $("pl-d-close").onclick=closeDrawer;
 $("al-overlay").onclick=function(){closeDrawer();$("pl-csv-modal").hidden=true;$("pl-sku-modal").hidden=true;$("pl-cov-modal").hidden=true;};
@@ -1337,9 +1379,9 @@ $("pl-cov-go").onclick=loadCoverage;
 $("pl-cov-cancel").onclick=function(){$("pl-cov-modal").hidden=true;$("al-overlay").hidden=true;};
 $("pl-cov-export").onclick=exportCovTemplate;
 $("pl-save").onclick=save;
-$("pl-life").onclick=function(){setStatus($("pl-life").getAttribute("data-to"));};
-$("pl-more").onclick=function(){var m=$("pl-more-menu"),h=m.hidden;m.hidden=!h;$("pl-more").setAttribute("aria-expanded",h?"true":"false");};
-$("pl-st-draft").onclick=function(){setStatus("Draft");};
+$("pl-cancel").onclick=closeDrawer;
+// RC5-2: per-row Status switch drives lifecycle (Activate/Pause) from the table.
+$("pl-rows").addEventListener("change",function(ev){var cb=ev.target;if(cb&&cb.classList&&cb.classList.contains("pl-tog"))togglePolicyStatus(cb);});
 $("pl-template").onclick=dlTemplate;
 $("pl-upload").onclick=openCsv;
 $("csv-preview").onclick=preview;
@@ -1360,6 +1402,9 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 """ % dict(VNJ, errors_l=js_escape("lỗi"), created_l=js_escape("tạo mới"),
            updated_l=js_escape("cập nhật"),
+           # RC5-2 status-switch labels (used by statusLabel() in PAGE2_JS)
+           st_active_l=js_escape("Đang bật"), st_paused_l=js_escape("Tạm dừng"),
+           st_draft_l=js_escape("Nháp"),
            save=js_escape("Lưu"), save_changes=js_escape("Lưu thay đổi"),
            activate_l=js_escape("Kích hoạt"), pause_l=js_escape("Tạm dừng"),
            resume_l=js_escape("Tiếp tục"),
@@ -1485,7 +1530,7 @@ PAGE3_JS = """
 (function(){
 "use strict";
 var A=window.AL,$=A.$;
-var S={scope:null,rows:[],current:null};
+var S={scope:null,rows:[],current:null,editing:{}};
 var RFIELDS=["rule_code","platform","shop","seller_sku","item","severity_override","threshold_percent","severe_drop_percent","high_alert_percent","effective_from","effective_to"];
 function tierOf(o){if(o.seller_sku||o.item)return "SKU";if(o.shop)return "Shop";if(o.platform&&o.platform!=="All")return "Platform";return "Brand";}
 // ===== Canonical scope-precedence resolver (frontend mirror of the backend
@@ -1499,7 +1544,7 @@ if(r.platform&&r.platform!=="All"){if(!ctx.platform||r.platform!==ctx.platform)r
 if(r.shop){if(!ctx.shop||r.shop!==ctx.shop)return null;s+=4;}
 if(r.seller_sku||r.item){var skuOk=r.seller_sku&&ctx.seller_sku&&r.seller_sku===ctx.seller_sku;var itemOk=r.item&&ctx.item&&r.item===ctx.item;if(!(skuOk||itemOk))return null;s+=8;}
 return s;}
-function resolveRule(rules,ctx,code){var best=null,bs=-1;(rules||[]).forEach(function(r){if(r.rule_code!==code)return;var sc=ruleMatchScore(r,ctx);if(sc===null)return;if(sc>bs){bs=sc;best=r;}});return best;}
+function resolveRule(rules,ctx,code){var best=null,bs=-1;(rules||[]).forEach(function(r){if(r.rule_code!==code)return;if(r.status==="Paused")return;/* RC5-4: a paused override is NOT active in the resolver */var sc=ruleMatchScore(r,ctx);if(sc===null)return;if(sc>bs){bs=sc;best=r;}});return best;}
 function resolveThreshold(rules,ctx,code){var r=resolveRule(rules,ctx,code);if(!r)return null;var f=RULE_THRESHOLD_FIELD[code];var v=(f&&r[f]!=null&&r[f]!=="")?r[f]:(r.threshold_percent!=null&&r.threshold_percent!==""?r.threshold_percent:null);return v==null?null:parseFloat(v);}
 // threshold value of ONE rule row, by its rule_code's canonical field.
 function ruleThrVal(r){if(!r)return null;var f=RULE_THRESHOLD_FIELD[r.rule_code];var v=(f&&r[f]!=null&&r[f]!=="")?r[f]:(r.threshold_percent!=null&&r.threshold_percent!==""?r.threshold_percent:null);return v==null?null:v;}
@@ -1543,22 +1588,39 @@ function thrTxt(r){var v=ruleThrVal(r);return (v!=null&&v!=="")?(A.esc(v)+"%%"):
 // drawer. Exactly one threshold per behaviour; a platform input affects only that
 // behaviour's rule_code; the backend remains the evaluation source of truth.
 function renderDefaults(rows){var brands={};
+// RC5-4: when duplicate rows of the same scope exist (legacy data), prefer a
+// NON-Paused row so the renderer and the resolver can never disagree.
+function better(cur,nr){if(!cur)return nr;if(cur.status==="Paused"&&nr.status!=="Paused")return nr;return cur;}
 rows.forEach(function(r){var bb=(brands[r.brand]=brands[r.brand]||{});var cc=(bb[r.rule_code]=bb[r.rule_code]||{ov:{}});
-if(!r.platform||r.platform==="All")cc.def=r;else cc.ov[r.platform]=r;});
+if(!r.platform||r.platform==="All")cc.def=better(cc.def,r);else cc.ov[r.platform]=better(cc.ov[r.platform],r);});
 var blist=Object.keys((S.scope&&S.scope.brands)||{});Object.keys(brands).forEach(function(b){if(blist.indexOf(b)<0)blist.push(b);});
 var dd=$("ru-defaults");
 if(!blist.length){dd.innerHTML='<div class="al-empty">%(no_rows)s</div>';return;}
 dd.innerHTML=blist.sort().map(function(b){var m=brands[b]||{};
 var beh=BEHAVIORS.map(function(bh){var code=bh[0];var c=m[code]||{ov:{}};var dr=c.def;
 var allActive=isActiveRule(dr)&&ruleThrVal(dr)!=null;var allVal=allActive?A.esc(ruleThrVal(dr)):"";
-var allBadge=dr?(' '+ruBadge(dr.status)):' <span class="al-badge al-b-ignored">%(notcfg)s</span>';
-var allCell='<input class="ru-i-all" type="number" step="0.01" min="0" max="100" value="'+allVal+'" placeholder="%(thr_ph_l)s"><span class="ru-unit">%%</span>'+allBadge+' <button class="al-btn primary" data-save-all="1">%(save_l)s</button>';
+var allBadge=dr?ruBadge(dr.status):'<span class="al-badge al-b-ignored">%(notcfg)s</span>';
+// All-platforms (Brand Default) cell: always editable - it is the base value.
+var allCell='<span class="ru-pf ru-pf-all">%(all_platforms_l)s</span>'+
+  '<input class="ru-i-all" type="number" step="0.01" min="0" max="100" value="'+allVal+'" placeholder="%(thr_ph_l)s"><span class="ru-unit">%%</span>'+
+  '<button class="al-btn primary ru-mini" data-save-all="1">%(save_l)s</button> '+allBadge;
+// RC5-4 explicit per-platform STATE MACHINE: inherited (read-only "Ke thua X
+// percent", only "Them tuy chinh", NO save) vs override editing/active (editable
+// input, "Tuy chinh", "Luu" + "Bo tuy chinh").
 var nOv=0;var ovHtml=RU_PLATFORMS.map(function(pf){var orr=c.ov[pf];var hasOv=isActiveRule(orr)&&ruleThrVal(orr)!=null;if(hasOv)nOv++;
-var ph=(allVal!==""?("%(inherits_l)s "+allVal+"%%"):"%(inherits_l)s");
-return '<div class="ru-ovrow" data-pf="'+pf+'"><span class="ru-pf">'+pf+'</span><input class="ru-i-pf" type="number" step="0.01" min="0" max="100" value="'+(hasOv?A.esc(ruleThrVal(orr)):"")+'" placeholder="'+ph+'"><span class="ru-unit">%%</span> '+(hasOv?'<span class="al-badge al-b-dryrun" title="%(overridden_l)s">%(overridden_l)s</span>':'<span class="ru-inh" title="%(inherited_l)s">%(inherited_l)s</span>')+' <button class="al-btn" data-save-pf="'+pf+'">%(save_l)s</button>'+(hasOv?(' <button class="al-btn" data-rm-pf="'+pf+'">%(remove_cust_l)s</button>'):'')+'</div>';}).join("");
+var editing=hasOv||(S.editing&&S.editing[b+"|"+code+"|"+pf]);var mid,acts;
+if(editing){
+  mid='<span class="ru-mid"><input class="ru-i-pf" type="number" step="0.01" min="0" max="100" value="'+(hasOv?A.esc(ruleThrVal(orr)):"")+'" placeholder="%(thr_ph_l)s"><span class="ru-unit">%%</span> <span class="al-badge al-b-dryrun" title="%(overridden_l)s">%(tuychinh_l)s</span></span>';
+  acts='<span class="ru-acts"><button class="al-btn primary ru-mini" data-save-pf="'+pf+'">%(save_l)s</button><button class="al-btn ru-mini" data-rm-pf="'+pf+'">%(remove_cust_l)s</button></span>';
+}else{
+  var inh=(allVal!==""?("%(kethua_l)s "+allVal+"%%"):("%(kethua_l)s \\u2014"));
+  mid='<span class="ru-mid"><span class="ru-inh-val" title="%(inherited_l)s">'+inh+'</span></span>';
+  acts='<span class="ru-acts"><button class="al-btn ru-mini" data-add-pf="'+pf+'">%(themcustom_l)s</button></span>';
+}
+return '<div class="ru-ovrow" data-pf="'+pf+'"><span class="ru-pf">'+pf+'</span>'+mid+acts+'</div>';}).join("");
 var custLabel="%(customize_l)s"+(nOv?(' <span class="al-chip-n">'+nOv+'</span>'):'');
-return '<div class="ru-beh" data-brand="'+A.esc(b)+'" data-code="'+code+'"><div class="ru-beh-row"><div class="ru-beh-h">'+bh[1]+'</div><div class="ru-beh-all"><span class="ru-pf ru-pf-all">%(all_platforms_l)s</span> '+allCell+'</div></div><details class="al-adv-sec ru-cust"'+(nOv?" open":"")+'><summary class="al-fsec" style="cursor:pointer;list-style:revert;margin:6px 0 4px">'+custLabel+'</summary><div class="ru-ovrows" style="padding:2px 0">'+ovHtml+'<div class="al-help">%(remove_cust_help)s</div></div></details></div>';}).join("");
-return '<div class="ru-brand"><div class="ru-brand-h">'+A.esc(b)+'</div><div style="padding:8px 14px">'+beh+'</div></div>';}).join("");}
+return '<div class="ru-beh" data-brand="'+A.esc(b)+'" data-code="'+code+'"><div class="ru-beh-head"><div class="ru-beh-h">'+bh[1]+'</div><div class="ru-beh-all">'+allCell+'</div></div><details class="al-adv-sec ru-cust"'+(nOv?" open":"")+'><summary class="al-fsec" style="cursor:pointer;list-style:revert;margin:6px 0 4px">'+custLabel+'</summary><div class="ru-ovrows">'+ovHtml+'<div class="al-help">%(remove_cust_help)s</div></div></details></div>';}).join("");
+return '<div class="ru-brand"><div class="ru-brand-h">'+A.esc(b)+'</div><div class="ru-brand-body">'+beh+'</div></div>';}).join("");}
 function renderExceptions(exc){var tb=$("ru-rows");
 if(!exc.length){tb.innerHTML='<tr><td colspan="12" class="al-empty">%(no_exc)s</td></tr>';return;}
 tb.innerHTML=exc.map(function(r){return '<tr data-rn="'+A.esc(r.name)+'">'+
@@ -1590,24 +1652,35 @@ function platformRule(brand,code,pf){var rs=rulesFor(brand,code);for(var i=0;i<r
 function isActiveRule(r){return !!r&&r.status!=="Paused";}
 function upsertRule(brand,code,platform,thrVal,existing){var data={brand:brand,rule_code:code,platform:platform};
 data[RULE_SAVE_THR_FIELD]=thrVal;return A.call("api_rules.save_rule",{rule:data,name:existing?existing.name:null});}
-// RC4-6: re-fetch + re-render without the loading flash (used after an inline save).
-function reloadRules(){return A.call("api_rules.list_rules",{filters:filters()}).then(function(res){S.rows=res.rows;
-var defs=[],exc=[];res.rows.forEach(function(r){var t=tierOf(r);if(t==="Brand"||t==="Platform")defs.push(r);else exc.push(r);});
-renderDefaults(defs);renderExceptions(exc);}).catch(function(e){A.toast("%(err)s"+e.message);});}
+// Re-split + re-render from the in-memory rows (no fetch) - used when toggling the
+// client-side "editing" state of an inherited platform row.
+function rerender(){var defs=[],exc=[];(S.rows||[]).forEach(function(r){var t=tierOf(r);if(t==="Brand"||t==="Platform")defs.push(r);else exc.push(r);});
+renderDefaults(defs);renderExceptions(exc);}
+// RC4-6/RC5-4: re-FETCH canonical rule data then re-render (used after every write
+// so the row reflects backend truth, never optimistic state).
+function reloadRules(){return A.call("api_rules.list_rules",{filters:filters()}).then(function(res){S.rows=res.rows;rerender();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 // resolve the (brand, behaviour) a clicked inline control belongs to.
 function behCtx(el){var beh=el.closest(".ru-beh");return beh?{brand:beh.getAttribute("data-brand"),code:beh.getAttribute("data-code"),beh:beh}:null;}
+function _ekey(ctx,pf){return ctx.brand+"|"+ctx.code+"|"+pf;}
 // Save the All-platforms (Brand Default) threshold for this behaviour.
 function saveAll(ctx){var inp=ctx.beh.querySelector(".ru-i-all");var v=inp?inp.value:"";if(v===""){A.toast("%(need_thr_l)s");return;}
 upsertRule(ctx.brand,ctx.code,"All",v,brandDefaultRule(ctx.brand,ctx.code)).then(function(){A.toast("%(saved)s");reloadRules();}).catch(function(e){A.toast("%(err)s"+e.message);});}
-// Save a per-platform override for this behaviour (empty -> drop back to All).
+// RC5-4: "Them tuy chinh" on an inherited row -> switch THIS row to override-edit
+// (editable input) without touching the backend; "Bo tuy chinh" before a save just
+// cancels back to inherited.
+function addPf(ctx,pf){S.editing[_ekey(ctx,pf)]=1;rerender();}
+// Save a per-platform override: writes via save_rule (backend find-or-updates by
+// scope identity, resuming a paused row), then WAITS for success and reloads the
+// canonical data so the row renders as an override with the saved value.
 function savePf(ctx,pf){var row=ctx.beh.querySelector('.ru-ovrow[data-pf="'+pf+'"]');var inp=row?row.querySelector(".ru-i-pf"):null;var v=inp?inp.value:"";
 var existing=platformRule(ctx.brand,ctx.code,pf);
 if(v===""){if(isActiveRule(existing)){rmPf(ctx,pf);}else{A.toast("%(need_pf_l)s");}return;}
-upsertRule(ctx.brand,ctx.code,pf,v,existing).then(function(){A.toast("%(saved)s");reloadRules();}).catch(function(e){A.toast("%(err)s"+e.message);});}
-// Remove customization: pause the platform override so the All-platforms Brand
-// Default value applies again (no delete API; backend overlay falls back by
-// precedence). Only this behaviour's rule_code on this platform is affected.
-function rmPf(ctx,pf){var orr=platformRule(ctx.brand,ctx.code,pf);if(!isActiveRule(orr)){reloadRules();return;}
+upsertRule(ctx.brand,ctx.code,pf,v,existing).then(function(){delete S.editing[_ekey(ctx,pf)];A.toast("%(saved)s");reloadRules();}).catch(function(e){A.toast("%(err)s"+e.message);});}
+// Remove customization: if an active override exists, PAUSE it (the resolver then
+// ignores it and the All-platforms Brand Default value applies again); if the row
+// was only being edited (not yet saved), just cancel back to inherited.
+function rmPf(ctx,pf){var orr=platformRule(ctx.brand,ctx.code,pf);delete S.editing[_ekey(ctx,pf)];
+if(!isActiveRule(orr)||ruleThrVal(orr)==null){rerender();return;}
 A.call("api_rules.set_rule_status",{name:orr.name,status:"Paused"}).then(function(){A.toast("%(saved)s");reloadRules();}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function init(){A.initScope("/alerts/rules",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
@@ -1620,6 +1693,7 @@ $("ru-apply").onclick=load;
 $("ru-defaults").addEventListener("click",function(ev){
   var sa=ev.target.closest("[data-save-all]");if(sa){var c=behCtx(sa);if(c)saveAll(c);return;}
   var sp=ev.target.closest("[data-save-pf]");if(sp){var c2=behCtx(sp);if(c2)savePf(c2,sp.getAttribute("data-save-pf"));return;}
+  var ap=ev.target.closest("[data-add-pf]");if(ap){var c4=behCtx(ap);if(c4)addPf(c4,ap.getAttribute("data-add-pf"));return;}
   var rp=ev.target.closest("[data-rm-pf]");if(rp){var c3=behCtx(rp);if(c3)rmPf(c3,rp.getAttribute("data-rm-pf"));return;}});
 // Enter inside an inline threshold input triggers that row's Save.
 $("ru-defaults").addEventListener("keydown",function(ev){if(ev.key!=="Enter")return;var t=ev.target;if(!t.classList)return;
@@ -1645,6 +1719,8 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
     need_thr_l=js_escape("Nhập ngưỡng All platforms trước."),
     need_pf_l=js_escape("Nhập ngưỡng override hoặc bấm Bỏ tùy chỉnh."),
     thr_ph_l=js_escape("Ngưỡng %"),
+    kethua_l=js_escape("Kế thừa"), themcustom_l=js_escape("Thêm tùy chỉnh"),
+    tuychinh_l=js_escape("Tùy chỉnh"),
     remove_cust_l=js_escape("Bỏ tùy chỉnh"),
     remove_cust_help=js_escape("Sẽ dùng lại giá trị All platforms"),
     behavior_l=js_escape("Hành vi"), action_l=js_escape("Hành động"),
@@ -2221,8 +2297,10 @@ assert 'type="date"' not in pol, "RC4-5: no date picker should remain in the Pri
 _pol_fields = pol.split("var FIELDS=[", 1)[1].split("]", 1)[0]
 for bad in ("high_alert_percent", "severe_drop_percent", "effective_from", "effective_to", '"item"'):
     assert bad not in _pol_fields, "RC4-5: FIELDS must not submit removed field: " + bad
-for keep in ("platform", "shop", "seller_sku", "product_name", "min_price", "reference_price", "target_price"):
+for keep in ("platform", "seller_sku", "product_name", "min_price", "reference_price", "target_price"):
     assert keep in _pol_fields, "RC4-5: FIELDS must still submit the business field: " + keep
+# RC5-3: shop is NO LONGER submitted (legacy value preserved by omission).
+assert '"shop"' not in _pol_fields, "RC5-3: shop must not be in the submitted FIELDS"
 # the save() handler must not push the removed alert-threshold / lock fields.
 assert "data.enable_stock_safety_lock=" not in pol, "RC4-5: save() must not submit the removed enable_stock_safety_lock"
 # Advanced Settings section is gone (no business field remained).
@@ -2433,17 +2511,35 @@ assert ("30" in polc and ("đơn" in polc or "ordered" in polc.lower())), \
     "Price Setup coverage must label its 30-day ordered-SKU basis"
 # the per-brand missing detail is kept but demoted to a drill-down (not dominant)
 assert 'id="pl-cov-bybrand"' in pol, "per-brand missing detail must remain as a drill-down"
-# RC polish 2026-06-15: contextual lifecycle footer + status badge near the title.
-for el in ('id="pl-d-status"', 'id="pl-life"', 'id="pl-more"', 'id="pl-st-draft"',
-           "refreshFooter", "curStatus", "set_policy_status", "function save()"):
-    assert el in pol, "page2 missing contextual-footer element " + el
-# the old simultaneous Active/Paused/Draft footer buttons are gone (max 2 lifecycle
-# buttons; Draft moved under a More menu), and no arrow glyphs remain on them.
-assert 'id="pl-st-active"' not in pol and 'id="pl-st-paused"' not in pol, \
-    "Price Setup must not show simultaneous Active/Paused status buttons"
+# RC5-2: lifecycle (Activate/Pause) is REMOVED from the drawer and lives as a per-row
+# Status SWITCH in the table. The drawer keeps only Save + Cancel.
+for el in ("set_policy_status", "function save()", 'id="pl-save"', 'id="pl-cancel"',
+           # the table switch:
+           "function statusToggle", "function togglePolicyStatus", 'class="pl-tog"',
+           "al-switch"):
+    assert el in pol, "RC5-2: page2 missing lifecycle-in-table element " + el
+# the drawer no longer has ANY lifecycle action buttons.
+for gone in ('id="pl-life"', 'id="pl-more"', 'id="pl-more-wrap"', 'id="pl-more-menu"',
+             'id="pl-st-draft"', 'id="pl-st-active"', 'id="pl-st-paused"'):
+    assert gone not in pol, "RC5-2: drawer lifecycle control must be removed: " + gone
+# the Status column sits right after Brand (header order Brand -> Status -> Platform).
+_th = _h.unescape(pol.split('<tbody id="pl-rows"', 1)[0].rsplit("<thead>", 1)[1])
+assert _th.index("Brand") < _th.index("Trạng thái") < _th.index("Platform"), \
+    "RC5-2: the Status column must appear immediately after Brand"
+# the switch reflects backend truth only: a flip is reverted to the current status
+# until the transition succeeds (no optimistic ON).
+assert 'cb.checked=(cur==="Active");cb.disabled=true' in pol, \
+    "RC5-2: the switch must snap back to truth until the backend confirms"
 for arrow in ("&#8594; Active", "&#8594; Paused", "&#8594; Draft"):
-    assert arrow not in pol, "lifecycle buttons must not carry arrow glyphs: " + arrow
-print("[OK] M2d Price Setup contextual-footer asserts pass")
+    assert arrow not in pol, "lifecycle must not carry arrow glyphs: " + arrow
+# RC5-3: Shop is removed from the normal form (hidden input only, never submitted)
+# and a legacy value is shown read-only; it is NOT in the submit FIELDS.
+assert '<input id="e-shop" type="hidden">' in pol, "RC5-3: Shop must be a hidden input (no manual entry)"
+assert 'id="e-shop" type="text"' not in pol, "RC5-3: there must be no editable Shop text input"
+assert 'id="e-shop-legacy"' in pol, "RC5-3: a read-only legacy-shop display must exist"
+_pol_fields2 = pol.split("var FIELDS=[", 1)[1].split("]", 1)[0]
+assert '"shop"' not in _pol_fields2, "RC5-3: shop must NOT be in the submitted FIELDS (legacy value preserved)"
+print("[OK] M2d Price Setup lifecycle-switch + legacy-shop asserts pass")
 
 p3 = open(os.path.join(OUTDIR, "alert_rules.html")).read()
 for el in ("ru-rows", "al-banner", "api_rules.set_rule_status", "api_rules.save_rule",
@@ -2522,7 +2618,28 @@ assert "rulePrecedenceSelfTest();" in p3, "precedence self-test must run on the 
 # inline editor only writes the single EDITABLE threshold_percent per behaviour).
 assert '<select id="r-severity_override">' not in p3, "E3: severity override select must not exist"
 assert 'id="r-severity_override"' not in p3, "RC4-6: severity override input must not exist on the rules page"
-print("[OK] M3 asserts pass")
+# ---- RC5-4: explicit per-platform override STATE MACHINE -------------------
+# inherited state (read-only "Ke thua X%", only "Them tuy chinh", NO save input) vs
+# override editing/active state (editable input, "Tuy chinh", "Luu" + "Bo tuy chinh").
+for el in ('data-add-pf="', "function addPf", "function rerender", "S.editing",
+           "Th\\u00eam t\\u00f9y ch\\u1ec9nh",   # "Them tuy chinh"
+           "K\\u1ebf th\\u1eeba",                # "Ke thua"
+           "T\\u00f9y ch\\u1ec9nh"):             # "Tuy chinh"
+    assert el in p3, "RC5-4: override state-machine element missing " + el
+# the resolver must NOT treat a Paused override as active.
+assert 'if(r.status==="Paused")return;' in p3, "RC5-4: resolver must exclude Paused overrides"
+# dedup resilience: when duplicate rows of a scope exist, the renderer prefers the
+# non-Paused row (so renderer + resolver agree).
+assert 'cur.status==="Paused"&&nr.status!=="Paused"' in p3, "RC5-4: renderer must prefer the non-paused duplicate"
+# after a write the row is re-rendered from RELOADED canonical data (not optimistic).
+assert "function reloadRules" in p3 and "delete S.editing[_ekey(ctx,pf)]" in p3, \
+    "RC5-4: save must clear the editing state and reload canonical data"
+# ---- RC5-5: full-width brand-card layout (no empty right gutter) -----------
+for el in ("ru-beh-head", "ru-brand-body", "ru-ovrows", "ru-acts", "ru-mid"):
+    assert el in p3, "RC5-5: full-width layout element missing " + el
+assert ".ecentric-app .ru-ovrow{display:grid" in p3, "RC5-5: platform rows must use a full-width grid"
+assert ".ecentric-app .ru-beh-head{display:grid" in p3, "RC5-5: behaviour header must use a full-width grid"
+print("[OK] M3 asserts pass (incl. RC5-4 state machine + RC5-5 full-width layout)")
 
 p4 = open(os.path.join(OUTDIR, "alert_locks.html")).read()
 for el in ("DRY-RUN ONLY", "lk-rows", "lk-approve-modal", "lk-reject-modal", "pz-rows",
