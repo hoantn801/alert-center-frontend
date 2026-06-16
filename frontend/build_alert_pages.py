@@ -298,6 +298,13 @@ SHARED_CSS = """
 /* RC7-C Gift Exemptions lifecycle tabs row */
 .ecentric-app .al-subtabs{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px 0}
 .ecentric-app .al-subtabs .gx-tab{font-size:12.5px;padding:5px 11px}
+/* Fixed read-only field value (e.g. the permanent Gift / Freebie reason) */
+.ecentric-app .al-fld-ro{padding:7px 0;color:#374151;font-weight:600;font-size:13px}
+/* Compact checkbox multi-select (Price Setup status filter) */
+.ecentric-app .al-msel-wrap{display:flex;flex-direction:column}
+.ecentric-app .al-msel{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;min-height:32px;padding:4px 0}
+.ecentric-app .al-msel label{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:500;color:var(--gray-700);cursor:pointer;margin:0}
+.ecentric-app .al-msel input{margin:0}
 /* Filters: every control on one baseline height, tidy spacing */
 .ecentric-app .al-filters{gap:10px 12px;padding:14px 16px;align-items:end}
 .ecentric-app .al-filters select,.ecentric-app .al-filters input{height:34px;box-sizing:border-box}
@@ -985,9 +992,19 @@ PAGE2_CONTENT = """
           <div><label>Brand</label><select id="f-brand"><option value="">%(all)s</option></select></div>
           <div><label>Platform</label><select id="f-platform"><option value="">%(all)s</option><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
           <div><label>SKU</label><input id="f-sku" type="text"></div>
-          <div><label>Status</label><select id="f-status"><option value="">%(all)s</option><option>Draft</option><option>Active</option><option>Paused</option><option>Expired</option><option>Inactive</option></select></div>
+          <!-- Status is a compact checkbox MULTI-select (OR semantics); persisted in the URL. -->
+          <div class="al-msel-wrap"><label>%(status_l)s</label>
+            <div class="al-msel" id="f-status-cbs">
+              <label><input type="checkbox" class="f-status-cb" value="Draft"> %(st_draft_l)s</label>
+              <label><input type="checkbox" class="f-status-cb" value="Active"> %(st_active_l)s</label>
+              <label><input type="checkbox" class="f-status-cb" value="Paused"> %(st_paused_l)s</label>
+              <label><input type="checkbox" class="f-status-cb" value="Expired"> %(st_expired_l)s</label>
+              <label><input type="checkbox" class="f-status-cb" value="Inactive"> %(st_inactive_l)s</label>
+            </div>
+          </div>
           <div><label>Owner</label><input id="f-owner" type="text" placeholder="user@email"></div>
           <button class="al-btn primary" id="pl-apply">%(apply)s</button>
+          <button class="al-btn" id="pl-clear">%(clear_l)s</button>
         </div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
@@ -1006,18 +1023,16 @@ PAGE2_CONTENT = """
       <div class="panel" id="pl-exempt-panel" style="margin-top:14px">
         <div class="panel-header"><div class="panel-title">%(gx_title)s<span class="al-help-i" title="%(gx_help)s" tabindex="0" role="img" aria-label="%(gx_help)s">&#9432;</span></div>
           <button class="al-btn primary" id="gx-new">%(gx_add)s</button></div>
+        <!-- Permanent gift model: status-based tabs only (Active / Inactive / All). -->
         <div class="al-subtabs" id="gx-tabs">
-          <button class="al-btn gx-tab primary" data-gxs="effective">%(gx_t_eff)s <span class="al-chip-n" id="gx-c-effective">0</span></button>
-          <button class="al-btn gx-tab" data-gxs="upcoming">%(gx_t_up)s <span class="al-chip-n" id="gx-c-upcoming">0</span></button>
-          <button class="al-btn gx-tab" data-gxs="expired">%(gx_t_exp)s <span class="al-chip-n" id="gx-c-expired">0</span></button>
-          <button class="al-btn gx-tab" data-gxs="inactive">%(gx_t_inact)s <span class="al-chip-n" id="gx-c-inactive">0</span></button>
+          <button class="al-btn gx-tab primary" data-gxs="active">%(gx_t_active)s <span class="al-chip-n" id="gx-c-active">0</span></button>
+          <button class="al-btn gx-tab" data-gxs="inactive">%(gx_t_inactive)s <span class="al-chip-n" id="gx-c-inactive">0</span></button>
           <button class="al-btn gx-tab" data-gxs="all">%(gx_t_all)s <span class="al-chip-n" id="gx-c-all">0</span></button>
         </div>
         <div class="al-filters">
           <div><label>Brand</label><select id="gx-f-brand"><option value="">%(gx_allopt)s</option></select></div>
           <div><label>Platform</label><select id="gx-f-platform"><option value="">%(gx_allopt)s</option><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
           <div><label>Seller SKU</label><input id="gx-f-sku" type="text"></div>
-          <div><label>%(gx_reason)s</label><select id="gx-f-reason"><option value="">%(gx_allopt)s</option><option>Gift / Freebie</option><option>Sample</option><option>Test Stock</option><option>Other</option></select></div>
           <button class="al-btn primary" id="gx-f-apply">%(gx_apply)s</button>
           <button class="al-btn" id="gx-f-clear">%(gx_clear)s</button>
         </div>
@@ -1036,7 +1051,8 @@ PAGE2_CONTENT = """
     <div class="al-fld"><label>Brand <span class="al-req">*</span></label><select id="gx-brand"></select></div>
     <div class="al-fld"><label>Platform</label><select id="gx-platform"><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
     <div class="al-fld al-col2"><label>Seller SKU <span class="al-req">*</span></label><input id="gx-seller_sku" type="text"></div>
-    <div class="al-fld"><label>%(gx_reason)s</label><select id="gx-reason"><option>Gift / Freebie</option><option>Sample</option><option>Test Stock</option><option>Other</option></select></div>
+    <!-- V1: the only reason is Gift / Freebie, shown as fixed read-only text (no dropdown). -->
+    <div class="al-fld"><label>%(gx_reason)s</label><div class="al-fld-ro" id="gx-reason-ro">Gift / Freebie</div></div>
     <div class="al-fld"><label>%(status_l)s</label><select id="gx-status"><option>Active</option><option>Inactive</option></select></div>
     <!-- RC7: V1 manual modal has NO effective-date fields. An Active exemption with
          empty dates is permanently effective until set Inactive. (DB date columns
@@ -1151,11 +1167,10 @@ PAGE2_CONTENT = """
 <div class="al-modal" id="cov-bulk-modal" hidden>
   <h3>%(cov_bulk)s</h3>
   <div id="cov-bulk-info" style="font-size:12.5px;color:var(--gray-600);margin-bottom:8px"></div>
+  <!-- Permanent Gift / Freebie only: fixed read-only reason, no effective dates. -->
   <div class="al-fgrid">
     <div class="al-fld"><label>Platform</label><select id="cb-platform"><option>All</option><option>Shopee</option><option>Lazada</option><option>TikTok</option></select></div>
-    <div class="al-fld"><label>%(gx_reason)s</label><select id="cb-reason"><option>Gift / Freebie</option><option>Sample</option><option>Test Stock</option><option>Other</option></select></div>
-    <div class="al-fld"><label>%(eff_from)s</label><input id="cb-from" type="text" placeholder="YYYY-MM-DD"></div>
-    <div class="al-fld"><label>%(eff_to)s</label><input id="cb-to" type="text" placeholder="YYYY-MM-DD"></div>
+    <div class="al-fld"><label>%(gx_reason)s</label><div class="al-fld-ro" id="cb-reason-ro">Gift / Freebie</div></div>
   </div>
   <div class="al-modal-foot"><button class="al-btn primary" id="cb-save">%(save)s</button><button class="al-btn" id="cb-cancel">%(cancel)s</button></div>
 </div>
@@ -1177,25 +1192,26 @@ PAGE2_CONTENT = """
     # RC5-2 status switch + RC5-3 legacy shop labels
     "status_l": H("Trạng thái"), "st_active_l": H("Đang bật"),
     "st_paused_l": H("Tạm dừng"), "st_draft_l": H("Nháp"),
+    "st_expired_l": H("Hết hạn"), "st_inactive_l": H("Đã tắt"),
+    "clear_l": H("Xoá lọc"),
     "legacy_shop_l": H("Shop (dữ liệu cũ — chỉ đọc)"),
     "delete_l": H("Xoá vĩnh viễn"),
     # RC7-C Gift Exemptions
     "gx_title": H("Gift Exemptions"), "gx_add": H("+ Thêm exemption"),
     "gx_reason": H("Lý do"),
     "gx_help": H("Miễn trừ Price Guard cho Seller SKU quà tặng/freebie chuyên dụng (brand + platform + seller_sku). V1 không hỗ trợ SKU dùng lẫn (vừa bán vừa tặng)."),
-    "gx_t_eff": H("Đang hiệu lực"), "gx_t_up": H("Sắp hiệu lực"),
-    "gx_t_exp": H("Hết hạn"), "gx_t_inact": H("Đã tắt"), "gx_t_all": H("Tất cả"),
+    "gx_t_active": H("Đang bật"), "gx_t_inactive": H("Đã tắt"), "gx_t_all": H("Tất cả"),
     "gx_on": H("Bật"), "gx_allopt": H("Tất cả"),
     "gx_apply": H("Lọc"), "gx_clear": H("Xoá lọc"),
     "cov_bulk": H("Gift/Freebie hàng loạt"),
-    "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Cột IS_GIFT: YES = Gift/Freebie (miễn trừ price check, cần Seller SKU, không cần giá); để trống/NO = dòng Price Policy bình thường. Brand + Platform + Seller SKU là định danh (không còn cột Shop)."),
+    "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Cột: brand, platform, seller_sku, product_name, min_price, target_price, reference_price, status, is_gift. Dòng thường: min_price bắt buộc (target/reference tuỳ chọn). IS_GIFT=YES → Gift/Freebie (bỏ qua giá, cần Seller SKU). Brand + Platform + Seller SKU là định danh. File cũ có cột Shop/Item/ngày... vẫn đọc được nhưng các cột đó bị bỏ qua kèm cảnh báo."),
     "preview": H("Kiểm tra (preview)"), "errors": H("Lỗi"),
     "errbox_ph": H("Lỗi sẽ hiện ở đây để copy..."),
     "copy_err": H("Copy lỗi"), "cancel": H("Huỷ"),
     "do_import": H("Import dòng đã chọn"),
     "import_title": H("Nhập hàng loạt (CSV / Paste)"),
     "src_file": H("Tải file CSV"), "src_paste": H("Dán bảng (TSV/CSV)"),
-    "paste_ph": H("Dán từ Excel/Sheets (có header). Cột: brand, platform, shop, seller_sku, item, product_name, min_price, reference_price, target_price, status"),
+    "paste_ph": H("Dán từ Excel/Sheets (có header). Cột: brand, platform, seller_sku, product_name, min_price, target_price, reference_price, status, is_gift"),
     "select_all": H("Chọn/bỏ tất cả dòng hợp lệ"), "action_l": H("Hành động"),
     "missing_sum_title": H("Thiếu Price Policy theo brand (theo đơn 30 ngày)"),
     "missing_sum_hint": H("Số SKU distinct chưa có Price Policy active, tính theo đơn hàng 30 ngày gần nhất. Bấm để xem SKU thiếu policy."),
@@ -1345,10 +1361,28 @@ Object.keys(f).forEach(function(nm){var el=document.querySelector('.al-conf-badg
 // hierarchy (Shop is no longer part of the canonical identity), so it is removed as
 // misleading. Only the genuine "duplicate" conflict warning remains beside the SKU.
 if(tags.indexOf("duplicate")>=0){el.innerHTML='<span class="al-badge al-b-critical" title="%(dup_t)s">%(dup_b)s</span>';}});}).catch(function(){});});}
+function getStatuses(){var out=[];Array.prototype.forEach.call(document.querySelectorAll(".f-status-cb:checked"),function(cb){out.push(cb.value);});return out;}
+function setStatuses(arr){var set={};(arr||[]).forEach(function(v){set[v]=1;});Array.prototype.forEach.call(document.querySelectorAll(".f-status-cb"),function(cb){cb.checked=!!set[cb.value];});}
 function filters(){var f={};
-[["f-brand","brand"],["f-platform","platform"],["f-status","status"]].forEach(function(p){var v=$(p[0]).value;if(v)f[p[1]]=v;});
+[["f-brand","brand"],["f-platform","platform"]].forEach(function(p){var v=$(p[0]).value;if(v)f[p[1]]=v;});
+var st=getStatuses();if(st.length)f.status=st;          // multi-select -> backend OR ("in")
 var sku=$("f-sku").value.trim();if(sku)f.seller_sku=sku;
 var o=$("f-owner").value.trim();if(o)f.owner_user=o;return f;}
+// ----- URL filter-state persistence (status multi-select + brand/platform/sku/owner) -----
+// All filter state lives in the query string so a refresh, copied link, or browser
+// back/forward restores exactly what the operator was looking at. Toggle/edit refreshes
+// call load() directly (never touch the controls), so they preserve the selection.
+var PLURLF=[["brand","f-brand"],["platform","f-platform"],["seller_sku","f-sku"],["owner_user","f-owner"]];
+function readUrlFilters(){var q;try{q=new URLSearchParams(window.location.search);}catch(e){return;}
+PLURLF.forEach(function(p){var el=$(p[1]);if(el)el.value=q.get(p[0])||"";});
+setStatuses((q.get("status")||"").split(",").filter(Boolean));}
+function writeUrlFilters(push){var q;try{q=new URLSearchParams();}catch(e){return;}
+PLURLF.forEach(function(p){var el=$(p[1]);var v=el?(el.value||"").trim():"";if(v)q.set(p[0],v);});
+var st=getStatuses();if(st.length)q.set("status",st.join(","));
+var s=q.toString();var url=window.location.pathname+(s?"?"+s:"")+window.location.hash;
+try{if(push)window.history.pushState({plFilter:1},"",url);else window.history.replaceState({plFilter:1},"",url);}catch(e){}}
+function applyFiltersNav(){S.start=0;writeUrlFilters(true);load();}            // push -> back/forward
+function clearFiltersNav(){["f-brand","f-platform","f-sku","f-owner"].forEach(function(id){var el=$(id);if(el)el.value="";});setStatuses([]);S.start=0;writeUrlFilters(false);load();}
 function polScope(r){var t=(r.seller_sku||r.item)?"%(ps_sku)s":r.shop?"%(ps_shop)s":(r.platform&&r.platform!=="All")?"%(ps_platform)s":"%(ps_brand)s";return '<span class="al-badge al-b-info" title="%(ps_priority)s">'+t+'</span>';}
 function load(){var tb=$("pl-rows");tb.innerHTML='<tr><td colspan="10" class="al-empty">%(loading)s</td></tr>';
 A.call("api_policies.list_policies",{filters:filters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;
@@ -1416,16 +1450,16 @@ function gxStatusToggle(r){var on=(r.status==="Active");
 return '<label class="al-switch" title="'+A.esc(r.status||"")+'"><input type="checkbox" class="gx-tog" data-name="'+A.esc(r.name)+'" data-status="'+A.esc(r.status||"Active")+'"'+(on?' checked':'')+'><span class="al-switch-sl"></span></label> <span class="al-switch-tx">'+A.esc(r.status||"")+'</span>';}
 function gxEff(r){var a=r.effective_from||"",b=r.effective_to||"";return (a||b)?(A.esc(a||"\\u2026")+" \\u2192 "+A.esc(b||"\\u2026")):"\\u2014";}
 // derived-state chip (reflects the operational lifecycle, not just Active/Inactive).
-function gxChip(state){var m={effective:["al-b-active","%(gx_l_eff)s"],upcoming:["al-b-dryrun","%(gx_l_up)s"],expired:["al-b-critical","%(gx_l_exp)s"],inactive:["al-b-ignored","%(gx_l_inact)s"]};var x=m[state]||["al-b-info",A.esc(state||"")];return '<span class="al-badge '+x[0]+'">'+x[1]+'</span>';}
-function gxFilters(){S.gx=S.gx||{state:"effective",start:0,pageLen:20};
+function gxChip(state){var m={active:["al-b-active","%(gx_l_active)s"],inactive:["al-b-ignored","%(gx_l_inactive)s"]};var x=m[state]||["al-b-info",A.esc(state||"")];return '<span class="al-badge '+x[0]+'">'+x[1]+'</span>';}
+function gxFilters(){S.gx=S.gx||{state:"active",start:0,pageLen:20};
 var f={lifecycle_state:S.gx.state};var b=$("gx-f-brand").value;if(b)f.brand=b;
 var p=$("gx-f-platform").value;if(p)f.platform=p;var s=$("gx-f-sku").value.trim();if(s)f.seller_sku=s;
-var rs=$("gx-f-reason").value;if(rs)f.reason=rs;return f;}
-function loadExemptions(){var tb=$("gx-rows");if(!tb)return;S.gx=S.gx||{state:"effective",start:0,pageLen:20};
+return f;}
+function loadExemptions(){var tb=$("gx-rows");if(!tb)return;S.gx=S.gx||{state:"active",start:0,pageLen:20};
 tb.innerHTML='<tr><td colspan="7" class="al-empty">%(loading)s</td></tr>';
 A.call("api_exemptions.list_exemptions",{filters:gxFilters(),start:S.gx.start,page_length:S.gx.pageLen}).then(function(res){
 S.exRows=res.rows||[];var c=res.counts||{};
-["effective","upcoming","expired","inactive","all"].forEach(function(k){var el=$("gx-c-"+k);if(el)el.textContent=(c[k]||0);});
+["active","inactive","all"].forEach(function(k){var el=$("gx-c-"+k);if(el)el.textContent=(c[k]||0);});
 Array.prototype.forEach.call(document.querySelectorAll("#gx-tabs .gx-tab"),function(bt){bt.classList.toggle("primary",bt.getAttribute("data-gxs")===S.gx.state);});
 if(!S.exRows.length){tb.innerHTML='<tr><td colspan="7" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=S.exRows.map(function(r,i){return '<tr data-xi="'+i+'">'+
@@ -1437,16 +1471,17 @@ $("gx-prev").disabled=S.gx.start<=0;$("gx-next").disabled=S.gx.start+S.gx.pageLe
 }).catch(function(e){tb.innerHTML='<tr><td colspan="7" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
 // tab switch resets to page 1; filter apply resets to page 1; create/edit/toggle keep
 // the current page + filters (loadExemptions reuses S.gx + the filter inputs unchanged).
-function gxSetTab(state){S.gx=S.gx||{state:"effective",start:0,pageLen:20};S.gx.state=state;S.gx.start=0;loadExemptions();}
-function gxApplyFilters(){S.gx=S.gx||{state:"effective",start:0,pageLen:20};S.gx.start=0;loadExemptions();}
-function gxClearFilters(){$("gx-f-brand").value="";$("gx-f-platform").value="";$("gx-f-sku").value="";$("gx-f-reason").value="";gxApplyFilters();}
+function gxSetTab(state){S.gx=S.gx||{state:"active",start:0,pageLen:20};S.gx.state=state;S.gx.start=0;loadExemptions();}
+function gxApplyFilters(){S.gx=S.gx||{state:"active",start:0,pageLen:20};S.gx.start=0;loadExemptions();}
+function gxClearFilters(){$("gx-f-brand").value="";$("gx-f-platform").value="";$("gx-f-sku").value="";gxApplyFilters();}
 function openExemption(r){S.exCurrent=r||null;$("gx-m-title").textContent=r?A.esc(r.seller_sku):"%(gx_add)s";
 A.fillBrandSelect($("gx-brand"),S.scope,{extra:(r&&r.brand)||null,value:(r&&r.brand)||null});
-["platform","seller_sku","reason","status","notes"].forEach(function(k){var el=$("gx-"+k);if(!el)return;
-el.value=(r&&r[k]!=null&&r[k]!=="")?r[k]:(k==="status"?"Active":(k==="platform"?"All":(k==="reason"?"Gift / Freebie":"")));});
+// Reason is fixed (Gift / Freebie, read-only); no date fields. Only these are editable.
+["platform","seller_sku","status","notes"].forEach(function(k){var el=$("gx-"+k);if(!el)return;
+el.value=(r&&r[k]!=null&&r[k]!=="")?r[k]:(k==="status"?"Active":(k==="platform"?"All":""));});
 $("gx-modal").hidden=false;$("al-overlay").hidden=false;}
 function closeExemption(){$("gx-modal").hidden=true;$("al-overlay").hidden=true;}
-function saveExemption(){var d={brand:$("gx-brand").value,platform:$("gx-platform").value,seller_sku:$("gx-seller_sku").value.trim(),reason:$("gx-reason").value,status:$("gx-status").value,notes:$("gx-notes").value.trim()};
+function saveExemption(){var d={brand:$("gx-brand").value,platform:$("gx-platform").value,seller_sku:$("gx-seller_sku").value.trim(),reason:"Gift / Freebie",status:$("gx-status").value,notes:$("gx-notes").value.trim()};
 if(!d.brand||!d.seller_sku){A.toast("%(gx_need)s");return;}
 A.call("api_exemptions.save_exemption",{exemption:d,name:S.exCurrent?S.exCurrent.name:null}).then(function(){A.toast("%(saved)s");closeExemption();loadExemptions();loadCoverageSummary();}).catch(function(e){A.toast(e.message);});}
 function toggleExemption(cb){var name=cb.getAttribute("data-name"),cur=cb.getAttribute("data-status");
@@ -1546,11 +1581,11 @@ var rows=res.missing||[];$("pl-cov-rows").innerHTML=rows.length?rows.map(functio
 function covSelected(){var out=[];Array.prototype.forEach.call(document.querySelectorAll("#pl-cov-rows .cov-pick:checked"),function(cb){out.push(cb.getAttribute("data-csku"));});return out;}
 function openCovBulk(){var sel=covSelected();if(!sel.length){A.toast("%(gx_bulk_need)s");return;}
 $("cov-bulk-info").textContent=sel.length+" SKU \\u00b7 "+($("pl-cov-brand").value||"");
-$("cb-platform").value="All";$("cb-reason").value="Gift / Freebie";$("cb-from").value="";$("cb-to").value="";
+$("cb-platform").value="All";
 $("cov-bulk-modal").hidden=false;$("al-overlay").hidden=false;}
 function closeCovBulk(){$("cov-bulk-modal").hidden=true;}
 function saveCovBulk(){var sel=covSelected();if(!sel.length){A.toast("%(gx_bulk_need)s");return;}
-var dflt={brand:$("pl-cov-brand").value,platform:$("cb-platform").value,reason:$("cb-reason").value,status:"Active",effective_from:$("cb-from").value.trim(),effective_to:$("cb-to").value.trim()};
+var dflt={brand:$("pl-cov-brand").value,platform:$("cb-platform").value,reason:"Gift / Freebie",status:"Active"};
 var items=sel.map(function(s){return {seller_sku:s};});$("cb-save").disabled=true;
 A.call("api_exemptions.bulk_save_exemptions",{exemptions:items,defaults:dflt}).then(function(res){$("cb-save").disabled=false;
 var rmap={};(res.results||[]).forEach(function(r){rmap[r.seller_sku]=r;});
@@ -1560,19 +1595,25 @@ $("cov-all").checked=false;closeCovBulk();
 A.toast("%(gx_bulk_done)s "+(res.created||0)+"/"+((res.created||0)+(res.failed||0))+(res.failed?(" \\u00b7 fail "+res.failed):""));
 loadExemptions();loadCoverageSummary();
 }).catch(function(e){$("cb-save").disabled=false;A.toast(e.message);});}
-function exportCovTemplate(){if(!(S.cov&&S.cov.missing&&S.cov.missing.length)){A.toast("%(no_rows)s");return;}
-var b=$("pl-cov-brand").value;var cols=["brand","platform","shop","seller_sku","product_name","min_price","reference_price","target_price"];
-var q=function(v){v=(v==null?"":String(v));if(/[",\\n]/.test(v))v='"'+v.replace(/"/g,'""')+'"';return v;};
-var lines=[cols.join(",")];S.cov.missing.forEach(function(x){lines.push([b,"","",x.seller_sku,x.product_name||"","",x.rsp_price||"",x.rsp_price||""].map(q).join(","));});
-var blob=new Blob(["\\ufeff"+lines.join("\\n")],{type:"text/csv;charset=utf-8;"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="missing_policy_"+b+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);A.toast("%(csv_exported)s");}
+// Missing-policy export uses the SAME backend canonical-schema helper as the template
+// download (api_policies.missing_policy_csv -> policy_csv.template_csv_with_rows), so the
+// two downloads share one column contract and cannot drift. Brand/platform/seller_sku/
+// product_name are pre-filled server-side; the operator fills min_price etc.
+function exportCovTemplate(){var b=$("pl-cov-brand").value;if(!b){A.toast("%(need_brand)s");return;}
+A.call("api_policies.missing_policy_csv",{brand:b}).then(function(t){
+var blob=new Blob(["\\ufeff"+t.content],{type:"text/csv;charset=utf-8;"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=t.filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);A.toast("%(csv_exported)s");}).catch(function(e){A.toast("%(err)s"+e.message);});}
 function init(){A.initScope("/alerts/policies",function(scope){S.scope=scope;
 $("al-scope-line").textContent=scope.supervisor?"Supervisor scope: all brands":("Brands: "+Object.keys(scope.brands).join(", "));
 var bsel=$("f-brand");Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
 var gxb=$("gx-f-brand");if(gxb)Object.keys(scope.brands||{}).forEach(function(b){var o=document.createElement("option");o.value=b;o.textContent=b;gxb.appendChild(o);});
+readUrlFilters();   // restore brand/platform/sku/owner/status from the URL BEFORE first load
 load();loadCaps();loadMissing();loadCoverageSummary();loadExemptions();applyFieldHelp($("pl-missing-panel"));});
 $("pl-cov-kpis").addEventListener("click",function(ev){if(ev.target.closest('[data-cov="missing"]'))openMissingView();});
 $("pl-cov-kpis").addEventListener("keydown",function(ev){if((ev.key==="Enter"||ev.key===" ")&&ev.target.closest('[data-cov="missing"]')){ev.preventDefault();openMissingView();}});
-$("pl-apply").onclick=function(){S.start=0;load();};
+$("pl-apply").onclick=applyFiltersNav;
+$("pl-clear").onclick=clearFiltersNav;
+// back/forward restores the filter state from the URL (no new history entry).
+window.addEventListener("popstate",function(){readUrlFilters();S.start=0;load();});
 $("pl-prev").onclick=function(){S.start=Math.max(0,S.start-S.pageLen);load();};
 $("pl-next").onclick=function(){S.start+=S.pageLen;load();};
 $("pl-rows").addEventListener("click",function(ev){if(ev.target.closest(".al-switch"))return;var tr=ev.target.closest("tr[data-i]");if(tr)openDrawer(S.rows[+tr.getAttribute("data-i")]);});
@@ -1638,8 +1679,7 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
            # RC7-C gift exemption
            gx_need=js_escape("Cần Brand + Seller SKU."),
            gx_add=js_escape("+ Thêm exemption"),
-           gx_l_eff=js_escape("Đang hiệu lực"), gx_l_up=js_escape("Sắp hiệu lực"),
-           gx_l_exp=js_escape("Hết hạn"), gx_l_inact=js_escape("Đã tắt"),
+           gx_l_active=js_escape("Đang bật"), gx_l_inactive=js_escape("Đã tắt"),
            # RC7-A delete_reason -> friendly tooltip
            del_r_active=js_escape("Đang Active — không thể xoá; tạm dừng trước."),
            del_r_unknown=js_escape("Không xác minh được phụ thuộc lịch sử — từ chối xoá (an toàn)."),
@@ -2821,32 +2861,56 @@ for el in ('id="pl-exempt-panel"', 'id="gx-rows"', 'id="gx-modal"', "function lo
            "api_exemptions.list_exemptions", "api_exemptions.save_exemption",
            "api_exemptions.set_exemption_status", 'class="gx-tog"'):
     assert el in pol, "RC7-C: gift-exemption element missing " + el
-# RC7-C list management: lifecycle tabs (+counts), filters + clear, server-side
-# pagination, derived-state chip, and the list call passes filters + start + page_length.
-for el in ('id="gx-tabs"', 'data-gxs="effective"', 'data-gxs="upcoming"', 'data-gxs="expired"',
-           'data-gxs="inactive"', 'data-gxs="all"', 'id="gx-c-effective"', 'id="gx-f-brand"',
+# Final simplification — Gift Exemptions: STATUS tabs only (Active / Inactive / All),
+# filters + clear, server-side pagination, status chip; list call passes filters + page.
+for el in ('id="gx-tabs"', 'data-gxs="active"', 'data-gxs="inactive"', 'data-gxs="all"',
+           'id="gx-c-active"', 'id="gx-c-inactive"', 'id="gx-c-all"', 'id="gx-f-brand"',
            'id="gx-f-sku"', 'id="gx-f-clear"', 'id="gx-prev"', 'id="gx-next"', 'id="gx-count"',
            "function gxChip", "function gxFilters", "function gxSetTab", "function gxClearFilters",
            "lifecycle_state:S.gx.state", "page_length:S.gx.pageLen"):
-    assert el in pol, "RC7-C: gift-exemption list-management element missing " + el
-# default tab is "effective"; only the effective tab ships pre-selected (primary).
-assert 'data-gxs="effective">' in pol and 'gx-tab primary" data-gxs="effective"' in pol, \
-    "RC7-C: default lifecycle tab must be 'Đang hiệu lực' (effective)"
+    assert el in pol, "Gift list-management element missing " + el
+# default tab is "active"; Upcoming/Expired tabs + the reason filter are gone.
+assert 'gx-tab primary" data-gxs="active"' in pol, "default gift tab must be Active (Đang bật)"
+for gone in ('data-gxs="effective"', 'data-gxs="upcoming"', 'data-gxs="expired"',
+             'id="gx-c-effective"', 'id="gx-f-reason"'):
+    assert gone not in pol, "Gift UI: obsolete element must be removed: " + gone
+# Reason is fixed to Gift / Freebie (read-only) — no dropdown, no legacy options anywhere.
+assert 'id="gx-reason-ro"' in pol and '<select id="gx-reason"' not in pol, \
+    "Gift modal reason must be a fixed read-only Gift / Freebie (no dropdown)"
+assert "Test Stock" not in pol and '<option>Sample</option>' not in pol, \
+    "Gift UI: legacy reason options (Sample / Test Stock / Other) must be removed"
+assert 'reason:"Gift / Freebie"' in pol, "saveExemption must hard-set reason to Gift / Freebie"
+# No effective-date fields anywhere in the gift create/edit OR the bulk modal.
+for gone in ('id="gx-effective_from"', 'id="gx-effective_to"', 'id="cb-from"',
+             'id="cb-to"', 'id="cb-reason"'):
+    assert gone not in pol, "Gift modal/bulk must have NO date/reason inputs: " + gone
 # RC7-C bulk: select-all + per-SKU checkbox in the missing-policy list, a bulk modal,
 # and ONE backend bulk request with per-item result handling.
 for el in ('id="cov-all"', 'class="cov-pick"', 'id="cov-bulk"', 'id="cov-bulk-modal"',
            "function covSelected", "function saveCovBulk", "api_exemptions.bulk_save_exemptions"):
-    assert el in pol, "RC7-C bulk: element missing " + el
-# RC7 CSV IS_GIFT workflow + SHOP removal + import outcomes + no-date gift modal.
-assert "<th>IS_GIFT</th>" in pol, "RC7: CSV preview must show an IS_GIFT column"
-assert "A.esc(rw.shop" not in pol, "RC7: the CSV preview must not render a Shop value"
-assert "IS_GIFT" in _h.unescape(pol), "RC7: CSV help text must mention IS_GIFT"
+    assert el in pol, "bulk gift element missing " + el
+# RC7 CSV IS_GIFT workflow + SHOP removal + import outcomes (still in force).
+assert "<th>IS_GIFT</th>" in pol, "CSV preview must show an IS_GIFT column"
+assert "A.esc(rw.shop" not in pol, "CSV preview must not render a Shop value"
+assert "IS_GIFT" in _h.unescape(pol), "CSV help text must mention IS_GIFT"
 for el in ("c.policy_created", "c.exemption_created", "c.exemption_reactivated",
            "c.already_exists", "r.counts"):
-    assert el in pol, "RC7: import summary must report per-row outcome " + el
-assert 'id="gx-effective_from"' not in pol and 'id="gx-effective_to"' not in pol, \
-    "RC7: the manual gift modal must have NO effective-date fields"
-print("[OK] M2d Price Setup lifecycle-switch + legacy-shop asserts pass")
+    assert el in pol, "import summary must report per-row outcome " + el
+# A. Both CSV downloads call the SHARED backend schema helper (no client-side column list).
+assert "api_policies.csv_template" in pol and "api_policies.missing_policy_csv" in pol, \
+    "both CSV downloads must call the shared backend schema endpoints"
+assert 'cols=["brand","platform","shop"' not in pol, \
+    "missing-policy export must NOT build a client-side column list (drift risk)"
+# C. Price Setup status MULTI-select + URL filter persistence (+ Clear).
+assert '<select id="f-status"' not in pol, "Price Setup status must be a checkbox multi-select, not a dropdown"
+for el in ('class="f-status-cb"', 'value="Draft"', 'value="Active"', 'value="Paused"',
+           'value="Expired"', 'value="Inactive"', "function getStatuses", "function setStatuses"):
+    assert el in pol, "status multi-select element missing " + el
+for el in ("function readUrlFilters", "function writeUrlFilters", "URLSearchParams",
+           "history.pushState", 'addEventListener("popstate"', 'id="pl-clear"',
+           "function clearFiltersNav", "function applyFiltersNav"):
+    assert el in pol, "URL filter-state persistence element missing " + el
+print("[OK] M2d Price Setup status multi-select + unified CSV + simplified Gift asserts pass")
 
 p3 = open(os.path.join(OUTDIR, "alert_rules.html")).read()
 for el in ("ru-rows", "al-banner", "api_rules.set_rule_status", "api_rules.save_rule",
