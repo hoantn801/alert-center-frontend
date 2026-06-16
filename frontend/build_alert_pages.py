@@ -1038,8 +1038,9 @@ PAGE2_CONTENT = """
     <div class="al-fld al-col2"><label>Seller SKU <span class="al-req">*</span></label><input id="gx-seller_sku" type="text"></div>
     <div class="al-fld"><label>%(gx_reason)s</label><select id="gx-reason"><option>Gift / Freebie</option><option>Sample</option><option>Test Stock</option><option>Other</option></select></div>
     <div class="al-fld"><label>%(status_l)s</label><select id="gx-status"><option>Active</option><option>Inactive</option></select></div>
-    <div class="al-fld"><label>%(eff_from)s</label><input id="gx-effective_from" type="text" placeholder="YYYY-MM-DD"></div>
-    <div class="al-fld"><label>%(eff_to)s</label><input id="gx-effective_to" type="text" placeholder="YYYY-MM-DD"></div>
+    <!-- RC7: V1 manual modal has NO effective-date fields. An Active exemption with
+         empty dates is permanently effective until set Inactive. (DB date columns
+         remain for back-compat but are not exposed/required here.) -->
     <div class="al-fld al-col2"><label>Notes</label><input id="gx-notes" type="text"></div>
   </div>
   <div class="al-modal-foot"><button class="al-btn primary" id="gx-save">%(save)s</button><button class="al-btn" id="gx-cancel">%(cancel)s</button></div>
@@ -1114,7 +1115,7 @@ PAGE2_CONTENT = """
     <span id="csv-stats" style="font-size:13px;align-self:center"></span>
   </div>
   <div class="al-tbl-wrap" style="max-height:300px;overflow-y:auto">
-    <table class="al-tbl"><thead><tr><th><input type="checkbox" id="csv-all" title="%(select_all)s"></th><th>#</th><th>%(action_l)s</th><th>Brand</th><th>Platform</th><th>Shop</th><th>SKU/Item</th><th>Status</th><th class="r">Min</th><th>%(errors)s</th></tr></thead>
+    <table class="al-tbl"><thead><tr><th><input type="checkbox" id="csv-all" title="%(select_all)s"></th><th>#</th><th>%(action_l)s</th><th>Brand</th><th>Platform</th><th>IS_GIFT</th><th>SKU/Item</th><th>Status</th><th class="r">Min</th><th>%(errors)s</th></tr></thead>
     <tbody id="csv-rows"></tbody></table>
   </div>
   <textarea id="csv-errbox" rows="2" readonly placeholder="%(errbox_ph)s" style="margin-top:10px"></textarea>
@@ -1187,7 +1188,7 @@ PAGE2_CONTENT = """
     "gx_on": H("Bật"), "gx_allopt": H("Tất cả"),
     "gx_apply": H("Lọc"), "gx_clear": H("Xoá lọc"),
     "cov_bulk": H("Gift/Freebie hàng loạt"),
-    "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Số tiền chấp nhận 5000000 / 5,000,000 / 5.000.000."),
+    "csv_hint": H("Tải template, điền dữ liệu (Excel: Save As CSV UTF-8), tối đa 500 dòng. Cột IS_GIFT: YES = Gift/Freebie (miễn trừ price check, cần Seller SKU, không cần giá); để trống/NO = dòng Price Policy bình thường. Brand + Platform + Seller SKU là định danh (không còn cột Shop)."),
     "preview": H("Kiểm tra (preview)"), "errors": H("Lỗi"),
     "errbox_ph": H("Lỗi sẽ hiện ở đây để copy..."),
     "copy_err": H("Copy lỗi"), "cancel": H("Huỷ"),
@@ -1441,11 +1442,11 @@ function gxApplyFilters(){S.gx=S.gx||{state:"effective",start:0,pageLen:20};S.gx
 function gxClearFilters(){$("gx-f-brand").value="";$("gx-f-platform").value="";$("gx-f-sku").value="";$("gx-f-reason").value="";gxApplyFilters();}
 function openExemption(r){S.exCurrent=r||null;$("gx-m-title").textContent=r?A.esc(r.seller_sku):"%(gx_add)s";
 A.fillBrandSelect($("gx-brand"),S.scope,{extra:(r&&r.brand)||null,value:(r&&r.brand)||null});
-["platform","seller_sku","reason","status","effective_from","effective_to","notes"].forEach(function(k){var el=$("gx-"+k);if(!el)return;
+["platform","seller_sku","reason","status","notes"].forEach(function(k){var el=$("gx-"+k);if(!el)return;
 el.value=(r&&r[k]!=null&&r[k]!=="")?r[k]:(k==="status"?"Active":(k==="platform"?"All":(k==="reason"?"Gift / Freebie":"")));});
 $("gx-modal").hidden=false;$("al-overlay").hidden=false;}
 function closeExemption(){$("gx-modal").hidden=true;$("al-overlay").hidden=true;}
-function saveExemption(){var d={brand:$("gx-brand").value,platform:$("gx-platform").value,seller_sku:$("gx-seller_sku").value.trim(),reason:$("gx-reason").value,status:$("gx-status").value,effective_from:$("gx-effective_from").value.trim(),effective_to:$("gx-effective_to").value.trim(),notes:$("gx-notes").value.trim()};
+function saveExemption(){var d={brand:$("gx-brand").value,platform:$("gx-platform").value,seller_sku:$("gx-seller_sku").value.trim(),reason:$("gx-reason").value,status:$("gx-status").value,notes:$("gx-notes").value.trim()};
 if(!d.brand||!d.seller_sku){A.toast("%(gx_need)s");return;}
 A.call("api_exemptions.save_exemption",{exemption:d,name:S.exCurrent?S.exCurrent.name:null}).then(function(){A.toast("%(saved)s");closeExemption();loadExemptions();loadCoverageSummary();}).catch(function(e){A.toast(e.message);});}
 function toggleExemption(cb){var name=cb.getAttribute("data-name"),cur=cb.getAttribute("data-status");
@@ -1490,22 +1491,28 @@ if(r.errors&&r.errors.length)errs=errs.concat(r.errors);
 return '<tr data-line="'+r.line+'">'+
 '<td>'+(sel?'<input type="checkbox" class="csv-pick" data-line="'+r.line+'" checked>':'')+'</td>'+
 '<td>'+r.line+'</td><td>'+actChip(r.action,r.detail)+'</td>'+
-'<td>'+A.esc(rw.brand||"")+'</td><td>'+A.esc(rw.platform||"")+'</td><td>'+A.esc(rw.shop||"-")+'</td>'+
-'<td>'+A.esc(rw.seller_sku||rw.item||"")+'</td><td>'+A.esc(rw.status||"Draft")+'</td>'+
+'<td>'+A.esc(rw.brand||"")+'</td><td>'+A.esc(rw.platform||"")+'</td><td>'+(r.is_gift?"YES":"-")+'</td>'+
+'<td>'+A.esc(rw.seller_sku||rw.item||"")+'</td><td>'+A.esc(r.is_gift?"-":(rw.status||"Draft"))+'</td>'+
 '<td class="r">'+A.esc(rw.min_price||"")+'</td>'+
 '<td style="white-space:normal;color:#dc2626">'+A.esc((r.errors||[]).join("; "))+'</td></tr>';}).join("");
 var c=res.counts||{};
 $("csv-stats").textContent="";
-$("csv-summary").innerHTML="%(sum_total)s "+res.rows.length+" \\u00b7 Create "+(c.create||0)+" \\u00b7 Update "+(c.update||0)+" \\u00b7 Skip "+(c.skip||0)+" \\u00b7 Conflict "+(c.conflict||0)+" \\u00b7 Invalid "+(c.invalid||0);
+$("csv-summary").innerHTML="%(sum_total)s "+res.rows.length+" \\u00b7 Create "+(c.create||0)+" \\u00b7 Update "+(c.update||0)+" \\u00b7 Skip "+(c.skip||0)+" \\u00b7 Conflict "+(c.conflict||0)+" \\u00b7 Invalid "+(c.invalid||0)+" \\u00b7 Gift "+((c.exemption_created||0)+(c.exemption_reactivated||0)+(c.already_exists||0));
 $("csv-errbox").value=errs.join("\\n");$("csv-all").checked=true;refreshImportBtn();
 }).catch(function(e){A.toast("%(err)s"+e.message);});});}
 function doImport(){if(!S.prev||!S.prevContent)return;var lines=selectedLines();if(!lines.length){A.toast("%(need_pick)s");return;}
 $("csv-import").disabled=true;var src=$("imp-src-paste").checked?"paste":"csv";
 A.call("api_policies.import_policy_csv",{content:S.prevContent,source:src,lines:JSON.stringify(lines)}).then(function(r){
-var html="%(res_created)s "+r.created+" \\u00b7 %(res_updated)s "+r.updated+" \\u00b7 %(res_skipped)s "+r.skipped+" \\u00b7 %(res_failed)s "+(r.failed?r.failed.length:0);
+var c=r.counts||{};
+// RC7: upload summary distinguishes POLICY vs EXEMPTION outcomes.
+var html="%(res_pol_c)s "+(c.policy_created||0)+" \\u00b7 %(res_pol_u)s "+(c.policy_updated||0)+
+  " \\u00b7 %(res_ex_c)s "+(c.exemption_created||0)+" \\u00b7 %(res_ex_r)s "+(c.exemption_reactivated||0)+
+  " \\u00b7 %(res_exists)s "+(c.already_exists||0)+" \\u00b7 %(res_skipped)s "+(c.skipped||0)+
+  " \\u00b7 %(res_invalid)s "+(c.invalid||0)+" \\u00b7 %(res_failed)s "+(c.failed||0);
 if(r.closed_alerts)html+=" \\u00b7 %(lc_closed)s "+r.closed_alerts;
-if(r.failed&&r.failed.length){html+='<div class="al-tbl-wrap" style="max-height:140px;overflow:auto;margin-top:6px"><table class="al-tbl"><thead><tr><th>#</th><th>%(act_l)s</th><th>%(err_l)s</th></tr></thead><tbody>'+
-r.failed.map(function(f){return '<tr><td>'+f.line+'</td><td>'+A.esc(f.action)+'</td><td style="white-space:normal">'+A.esc((f.errors||[]).join("; "))+'</td></tr>';}).join("")+'</tbody></table></div>';}
+var fails=r.errors||[];
+if(fails.length){html+='<div class="al-tbl-wrap" style="max-height:140px;overflow:auto;margin-top:6px"><table class="al-tbl"><thead><tr><th>#</th><th>%(act_l)s</th><th>%(err_l)s</th></tr></thead><tbody>'+
+fails.map(function(f){return '<tr><td>'+f.line+'</td><td>'+A.esc(f.action)+'</td><td style="white-space:normal">'+A.esc((f.errors||[]).join("; "))+'</td></tr>';}).join("")+'</tbody></table></div>';}
 $("csv-result").innerHTML=html;A.toast("%(imported)s");
 load();loadMissing();refreshImportBtn();   // partial: keep modal + rows open
 }).catch(function(e){A.toast("%(err)s"+e.message);$("csv-import").disabled=false;});}
@@ -1661,6 +1668,10 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
            warn_active=js_escape("Active cần đủ (backend kiểm tra): "),
            sum_total=js_escape("Tổng"),
            res_created=js_escape("Tạo:"), res_updated=js_escape("Cập nhật:"),
+           # RC7 IS_GIFT import outcomes
+           res_pol_c=js_escape("Policy tạo:"), res_pol_u=js_escape("Policy cập nhật:"),
+           res_ex_c=js_escape("Exemption tạo:"), res_ex_r=js_escape("Exemption bật lại:"),
+           res_exists=js_escape("Đã có:"), res_invalid=js_escape("Lỗi dữ liệu:"),
            res_skipped=js_escape("Bỏ qua:"), res_failed=js_escape("Lỗi:"),
            act_l=js_escape("Hành động"), err_l=js_escape("Lỗi"),
            dup_b=js_escape("TRÙNG"), dup_t=js_escape("Có Active policy khác trùng y hệt scope + chồng hiệu lực. Inactivate bớt 1."),
@@ -2826,6 +2837,15 @@ assert 'data-gxs="effective">' in pol and 'gx-tab primary" data-gxs="effective"'
 for el in ('id="cov-all"', 'class="cov-pick"', 'id="cov-bulk"', 'id="cov-bulk-modal"',
            "function covSelected", "function saveCovBulk", "api_exemptions.bulk_save_exemptions"):
     assert el in pol, "RC7-C bulk: element missing " + el
+# RC7 CSV IS_GIFT workflow + SHOP removal + import outcomes + no-date gift modal.
+assert "<th>IS_GIFT</th>" in pol, "RC7: CSV preview must show an IS_GIFT column"
+assert "A.esc(rw.shop" not in pol, "RC7: the CSV preview must not render a Shop value"
+assert "IS_GIFT" in _h.unescape(pol), "RC7: CSV help text must mention IS_GIFT"
+for el in ("c.policy_created", "c.exemption_created", "c.exemption_reactivated",
+           "c.already_exists", "r.counts"):
+    assert el in pol, "RC7: import summary must report per-row outcome " + el
+assert 'id="gx-effective_from"' not in pol and 'id="gx-effective_to"' not in pol, \
+    "RC7: the manual gift modal must have NO effective-date fields"
 print("[OK] M2d Price Setup lifecycle-switch + legacy-shop asserts pass")
 
 p3 = open(os.path.join(OUTDIR, "alert_rules.html")).read()
