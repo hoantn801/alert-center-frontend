@@ -286,6 +286,15 @@ SHARED_CSS = """
 /* Toolbar action group inside a panel header (consistent gap + alignment) */
 .ecentric-app .al-hdr-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ecentric-app .panel-header{min-height:52px;gap:12px}
+/* RC6 visual polish: calm spacing INSIDE the Price Setup coverage card only (scoped
+   to #pl-missing-panel - no other panel/page is affected). .panel has no padding and
+   .panel-header is inset 20px; mirror that 20px on the body so the KPI cards + brand
+   chips never sit against the outer border or the divider lines. */
+.ecentric-app #pl-missing-panel #pl-cov-kpis{display:flex;flex-wrap:wrap;gap:14px;padding:16px 20px;margin:0}
+.ecentric-app #pl-missing-panel #pl-cov-kpis .stat-card{flex:1 1 180px;margin:0}
+.ecentric-app #pl-missing-panel #pl-cov-bybrand{margin:0;padding:14px 20px 18px}
+.ecentric-app #pl-missing-panel #pl-cov-bybrand>summary{padding:2px 0 4px}
+.ecentric-app #pl-missing-panel #pl-missing-rows{gap:12px;padding:12px 0 6px}
 /* Filters: every control on one baseline height, tidy spacing */
 .ecentric-app .al-filters{gap:10px 12px;padding:14px 16px;align-items:end}
 .ecentric-app .al-filters select,.ecentric-app .al-filters input{height:34px;box-sizing:border-box}
@@ -950,9 +959,9 @@ PAGE2_CONTENT = """
           <div class="stat-card s-yellow kpi" id="pl-cov-missing-card" data-cov="missing" role="button" tabindex="0" title="%(cov_missing_hint)s"><div class="stat-label">%(cov_missing)s</div><div class="stat-value" id="pl-cov-missing">-</div><div class="stat-meta">%(cov_missing_meta)s</div></div>
           <div class="stat-card s-navy"><div class="stat-label">%(cov_pct)s</div><div class="stat-value" id="pl-cov-pct">-</div><div class="stat-meta">%(cov_basis)s</div></div>
         </div>
-        <details class="al-adv-sec" id="pl-cov-bybrand" style="margin-top:10px">
+        <details class="al-adv-sec" id="pl-cov-bybrand">
           <summary class="al-fsec" style="cursor:pointer">%(cov_bybrand)s</summary>
-          <div id="pl-missing-rows" class="al-inline" style="flex-wrap:wrap;gap:10px;padding:6px 2px"><span class="al-empty">-</span></div>
+          <div id="pl-missing-rows" class="al-inline" style="flex-wrap:wrap"><span class="al-empty">-</span></div>
         </details>
       </div>
       <div class="panel">
@@ -972,7 +981,11 @@ PAGE2_CONTENT = """
         </div>
         <div class="al-tbl-wrap">
           <table class="al-tbl">
-            <thead><tr><th>Brand</th><th>%(status_l)s</th><th>Platform</th><th>Shop</th><th>SKU</th><th>%(product)s</th><th>Min</th><th>Target/RSP</th><th>Ref</th><th>Owner</th><th>%(effective)s</th></tr></thead>
+            <!-- RC6 UI cleanup: the Shop column is removed (Shop is no longer part of
+                 the canonical identity or the standard editing workflow). The backend
+                 `shop` field + legacy values are untouched; freed width redistributes
+                 to SKU/Product via the auto-layout table. -->
+            <thead><tr><th>Brand</th><th>%(status_l)s</th><th>Platform</th><th>SKU</th><th>%(product)s</th><th>Min</th><th>Target/RSP</th><th>Ref</th><th>Owner</th><th>%(effective)s</th></tr></thead>
             <tbody id="pl-rows"></tbody>
           </table>
         </div>
@@ -1258,17 +1271,17 @@ function filters(){var f={};
 var sku=$("f-sku").value.trim();if(sku)f.seller_sku=sku;
 var o=$("f-owner").value.trim();if(o)f.owner_user=o;return f;}
 function polScope(r){var t=(r.seller_sku||r.item)?"%(ps_sku)s":r.shop?"%(ps_shop)s":(r.platform&&r.platform!=="All")?"%(ps_platform)s":"%(ps_brand)s";return '<span class="al-badge al-b-info" title="%(ps_priority)s">'+t+'</span>';}
-function load(){var tb=$("pl-rows");tb.innerHTML='<tr><td colspan="11" class="al-empty">%(loading)s</td></tr>';
+function load(){var tb=$("pl-rows");tb.innerHTML='<tr><td colspan="10" class="al-empty">%(loading)s</td></tr>';
 A.call("api_policies.list_policies",{filters:filters(),start:S.start,page_len:S.pageLen}).then(function(res){S.rows=res.rows;S.total=res.total;
-if(!res.rows.length){tb.innerHTML='<tr><td colspan="11" class="al-empty">%(no_rows)s</td></tr>';}
+if(!res.rows.length){tb.innerHTML='<tr><td colspan="10" class="al-empty">%(no_rows)s</td></tr>';}
 else{tb.innerHTML=res.rows.map(function(r,i){return '<tr data-i="'+i+'">'+
 '<td>'+A.esc(r.brand)+' '+polScope(r)+'</td>'+
 '<td>'+statusToggle(r)+'</td>'+
-'<td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.shop||"-")+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
+'<td>'+A.esc(r.platform)+'</td><td>'+A.esc(r.seller_sku||r.item||"-")+' <span class="al-conf-badge" data-conf="'+A.esc(r.name)+'"></span></td><td>'+A.esc(r.product_name||"-")+'</td>'+
 '<td>'+A.money(r.min_price)+'</td><td>'+A.money(r.target_price)+'</td><td>'+A.money(r.reference_price)+'</td>'+
 '<td>'+A.esc(r.owner_user||"-")+'</td><td>'+A.esc((r.effective_from||"")+(r.effective_to?(" \\u2192 "+r.effective_to):""))+'</td></tr>';}).join("");loadConflicts(res.rows);}
 var from=S.total?S.start+1:0;$("pl-count").textContent=from+"-"+Math.min(S.start+S.pageLen,S.total)+" / "+S.total;
-$("pl-prev").disabled=S.start<=0;$("pl-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="11" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
+$("pl-prev").disabled=S.start<=0;$("pl-next").disabled=S.start+S.pageLen>=S.total;}).catch(function(e){tb.innerHTML='<tr><td colspan="10" class="al-empty">%(err)s'+A.esc(e.message)+'</td></tr>';});}
 // RC4-5: only safe business facts are submitted. The Rules-owned thresholds
 // (high_alert_percent / severe_drop_percent), the effective-period fields and ERP
 // Item are intentionally NOT in this list, so save() never sends them (legacy
