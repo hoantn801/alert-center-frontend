@@ -1181,12 +1181,30 @@ var canFlip=on?c.can_manage:c.can_activate;
 return '<label class="al-switch'+(canFlip?'':' al-switch-dis')+'" title="'+A.esc(r.status||"")+'">'+
   '<input type="checkbox" class="pl-tog" data-name="'+A.esc(r.name)+'" data-status="'+A.esc(r.status||"Draft")+'"'+(on?' checked':'')+(canFlip?'':' disabled')+'>'+
   '<span class="al-switch-sl"></span></label> <span class="al-switch-tx">'+statusLabel(r.status)+'</span>';}
+// RC6-2: IN-PLACE toggle - update only the clicked row (switch + label + in-memory
+// row object); never rebuild the table, so scroll position and filters are kept. A
+// per-name guard blocks rapid double-clicks. KPI/coverage counts refresh in the
+// background (they do not touch the policy table).
 function togglePolicyStatus(cb){var name=cb.getAttribute("data-name"),cur=cb.getAttribute("data-status");
+S.toggling=S.toggling||{};if(S.toggling[name])return;        // no duplicate transitions
+S.toggling[name]=1;
 var next=cb.checked?"Active":"Paused";
-cb.checked=(cur==="Active");cb.disabled=true;   // show truth until backend confirms
-A.call("api_policies.set_policy_status",{name:name,status:next}).then(function(){
-  A.toast("%(saved)s");load();loadMissing();loadCoverageSummary();
-}).catch(function(e){cb.disabled=false;A.toast(e.message);});}
+cb.checked=(cur==="Active");cb.disabled=true;                // show truth until confirmed
+var td=cb.closest("td"),tx=td?td.querySelector(".al-switch-tx"):null;
+A.call("api_policies.set_policy_status",{name:name,status:next}).then(function(res){
+  var st=(res&&res.status)||next;                            // reflect the REAL status
+  var row=null,i;for(i=0;i<(S.rows||[]).length;i++){if(S.rows[i].name===name){row=S.rows[i];break;}}
+  if(row)row.status=st;
+  cb.setAttribute("data-status",st);cb.checked=(st==="Active");cb.title=st;
+  if(tx)tx.textContent=statusLabel(st);
+  var c=cap(row?row.brand:""),on=(st==="Active");cb.disabled=!(on?c.can_manage:c.can_activate);
+  delete S.toggling[name];A.toast("%(saved)s");
+  loadMissing();loadCoverageSummary();                       // background counts only
+}).catch(function(e){
+  cb.checked=(cur==="Active");cb.disabled=false;cb.setAttribute("data-status",cur);
+  if(tx)tx.textContent=statusLabel(cur);
+  delete S.toggling[name];A.toast(e.message);                // exact backend error; switch stays OFF
+});}
 // ----- per-brand missing-policy summary (unknown/not-loaded -> '-', confirmed 0 -> '0') -----
 function loadMissing(){var box=$("pl-missing-rows");
 A.call("api_policies.missing_policy_summary",{}).then(function(res){S.missingLoaded=true;var sum=res.summary||{};
@@ -2530,6 +2548,17 @@ assert _th.index("Brand") < _th.index("Trạng thái") < _th.index("Platform"), 
 # until the transition succeeds (no optimistic ON).
 assert 'cb.checked=(cur==="Active");cb.disabled=true' in pol, \
     "RC5-2: the switch must snap back to truth until the backend confirms"
+# RC6-2: the toggle updates the row IN PLACE - it must NOT call the full table
+# load() on a normal success, must update the in-memory row + the visible label, and
+# must guard rapid double-clicks (S.toggling). Filters/scroll are preserved because
+# the table is never rebuilt.
+_tog = pol.split("function togglePolicyStatus(cb)", 1)[1].split("function ", 1)[0]
+assert "load()" not in _tog, "RC6-2: a successful toggle must NOT rebuild the table via load()"
+assert "S.toggling" in _tog, "RC6-2: the toggle must guard against duplicate transitions"
+assert "row.status=st" in _tog and "tx.textContent=statusLabel(st)" in _tog, \
+    "RC6-2: the toggle must update the in-memory row + the visible status label in place"
+assert "loadMissing();loadCoverageSummary()" in _tog, \
+    "RC6-2: KPI/coverage counts may refresh in the background (no table rebuild)"
 for arrow in ("&#8594; Active", "&#8594; Paused", "&#8594; Draft"):
     assert arrow not in pol, "lifecycle must not carry arrow glyphs: " + arrow
 # RC5-3: Shop is removed from the normal form (hidden input only, never submitted)
